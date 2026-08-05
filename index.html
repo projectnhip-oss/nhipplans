@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ติดตามการขึ้นระบบ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600&family=Sarabun:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F5F7F6;
+    --surface: #FFFFFF;
+    --surface-muted: #EEF2F0;
+    --border: #DCE3DF;
+    --border-strong: #C2CCC6;
+    --primary: #123C4D;
+    --primary-tint: #E6EEF1;
+    --accent: #2A9D8F;
+    --accent-tint: #E3F3F1;
+    --text-primary: #1B2A2E;
+    --text-secondary: #5B6B67;
+    --text-muted: #8A968F;
+
+    --pending-bg: #F1EEE6;
+    --pending-text: #8A7A4E;
+    --pending-dot: #C9A227;
+
+    --progress-bg: #EAF1FB;
+    --progress-text: #1C5FA8;
+    --progress-dot: #3B82F6;
+
+    --done-bg: #E5F4E7;
+    --done-text: #1F7A34;
+    --done-dot: #2E9E4A;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Sarabun', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 28px 32px 60px;
+  }
+
+  /* header */
+  .topbar{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .eyebrow{
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+  h1{
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0;
+    color: var(--primary);
+  }
+  .sub{
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 6px 0 0;
+  }
+  .updated{
+    text-align:right;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding-top: 4px;
+  }
+  .updated b{ color: var(--text-secondary); font-weight: 600; }
+
+  /* KPI cards */
+  .kpi-grid{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .kpi{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .kpi .label{
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 0 0 8px;
+  }
+  .kpi .value{
+    font-family: 'Kanit', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .kpi .value.small{ font-size: 22px; }
+  .kpi.accent{ border-color: var(--accent); background: var(--accent-tint); }
+  .kpi.accent .value{ color: var(--accent); }
+  .kpi .bar{
+    height: 5px;
+    border-radius: 4px;
+    background: var(--surface-muted);
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .kpi .bar > div{ height: 100%; background: var(--accent); border-radius: 4px; }
+
+  /* filter bar */
+  .filters{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+  }
+  .filters select, .filters input[type="text"]{
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13.5px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+  .filters input[type="text"]{ flex: 1; min-width: 180px; }
+  .filters .count{
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .filters .reset{
+    font-size: 13px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 4px;
+  }
+
+  /* legend */
+  .legend{
+    display:flex; gap:16px; align-items:center;
+    font-size: 12.5px; color: var(--text-secondary);
+    margin: 0 0 12px;
+  }
+  .legend .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .dot.pending{ background: var(--pending-dot); }
+  .dot.progress{ background: var(--progress-dot); }
+  .dot.done{ background: var(--done-dot); }
+
+  /* table */
+  .table-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table{ width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th{
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    background: var(--surface-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td{
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td{ border-bottom: none; }
+  tbody tr:hover{ background: #FAFCFB; }
+  .code{ font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--text-secondary); }
+  .org{ font-weight: 500; color: var(--text-primary); }
+  .region-tag{
+    font-size: 11.5px;
+    color: var(--primary);
+    background: var(--primary-tint);
+    padding: 2px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .owner-cell{ display:flex; align-items:center; gap:8px; }
+  .avatar{
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent-tint); color: var(--accent);
+    font-size: 11px; font-weight: 600;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+  }
+
+  /* pipeline / stepper */
+  .pipeline{ display:flex; align-items:center; gap: 3px; }
+  .step{
+    width: 26px; height: 8px; border-radius: 4px;
+    background: var(--pending-bg);
+  }
+  .step.progress{ background: var(--progress-dot); }
+  .step.done{ background: var(--done-dot); }
+  .step.pending{ background: var(--pending-bg); border: 1px solid var(--border-strong); }
+
+  .badge{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size: 12px; font-weight: 500;
+    padding: 3px 9px; border-radius: 100px;
+    white-space: nowrap;
+  }
+  .badge .dot{ width:6px; height:6px; border-radius:50%; margin:0; }
+  .badge.pending{ background: var(--pending-bg); color: var(--pending-text); }
+  .badge.progress{ background: var(--progress-bg); color: var(--progress-text); }
+  .badge.done{ background: var(--done-bg); color: var(--done-text); }
+
+  .empty{
+    text-align:center; padding: 48px 20px; color: var(--text-muted); font-size: 14px;
+  }
+
+  .source-note{
+    margin-top: 16px; font-size: 12.5px; color: var(--text-muted);
+    display:flex; align-items:center; gap: 8px;
+  }
+  .source-note .tag{
+    background: var(--surface-muted); border-radius: 6px; padding: 2px 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-secondary);
+  }
+
+  /* view toggle */
+  .view-toggle{
+    display:flex; gap:4px; background: var(--surface-muted);
+    border: 1px solid var(--border); border-radius: 10px; padding: 3px;
+  }
+  .view-toggle button{
+    font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 7px 14px; border-radius: 7px; border: none; cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+  }
+  .view-toggle button.active{
+    background: var(--surface); color: var(--primary);
+    box-shadow: 0 1px 2px rgba(18,60,77,0.12);
+  }
+
+  /* owner (BA) view */
+  #owner-view{ display:none; }
+  .owner-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .owner-card{
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .owner-card.needs-attention{ border-color: var(--pending-dot); }
+  .owner-card-head{ display:flex; align-items:center; gap:10px; margin-bottom: 12px; }
+  .owner-card .avatar{ width: 34px; height: 34px; font-size: 13px; }
+  .owner-card-name{ font-weight: 600; color: var(--text-primary); font-size: 14.5px; }
+  .owner-card-count{ font-size: 12px; color: var(--text-secondary); }
+  .owner-stackbar{
+    display:flex; height: 10px; border-radius: 6px; overflow: hidden;
+    background: var(--pending-bg); margin-bottom: 10px;
+  }
+  .owner-stackbar .seg.done{ background: var(--done-dot); }
+  .owner-stackbar .seg.progress{ background: var(--progress-dot); }
+  .owner-stackbar .seg.pending{ background: var(--pending-bg); }
+  .owner-stats{ display:flex; gap: 14px; flex-wrap: wrap; }
+  .owner-stat{ font-size: 12.5px; color: var(--text-secondary); display:flex; align-items:center; gap:5px; }
+  .owner-stat .dot{ width:7px; height:7px; border-radius:50%; }
+  .owner-stat b{ color: var(--text-primary); font-weight:600; }
+  .owner-percent{ margin-left:auto; font-family:'Kanit',sans-serif; font-weight:600; font-size:15px; }
+
+  @media (max-width: 1000px){
+    .kpi-grid{ grid-template-columns: repeat(2,1fr); }
+    .wrap{ padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">System go-live tracker</p>
+      <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
+      <p class="sub">ข้อมูลรวมจากทีม — สถานะ Anydesk, Migration, Transfer, ตรวจสอบข้อมูล และประกาศใช้งาน</p>
+    </div>
+    <div class="updated">อัปเดตล่าสุด<br><b id="updated-time"></b></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <p class="label">หน่วยงานทั้งหมด</p>
+      <p class="value" id="kpi-total">0</p>
+    </div>
+    <div class="kpi">
+      <p class="label">ดำเนินการแล้วครบทุกขั้นตอน</p>
+      <p class="value" id="kpi-done">0</p>
+    </div>
+    <div class="kpi">
+      <p class="label">กำลังดำเนินการ</p>
+      <p class="value" id="kpi-progress">0</p>
+    </div>
+    <div class="kpi">
+      <p class="label">รอดำเนินการ (ยังไม่เริ่ม)</p>
+      <p class="value" id="kpi-pending">0</p>
+    </div>
+    <div class="kpi accent">
+      <p class="label">ความคืบหน้ารวม</p>
+      <p class="value" id="kpi-percent">0%</p>
+      <div class="bar"><div id="kpi-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <select id="f-region"><option value="">ทุกเขต</option></select>
+    <select id="f-province"><option value="">ทุกจังหวัด</option></select>
+    <select id="f-owner"><option value="">ทุกผู้รับผิดชอบ</option></select>
+    <select id="f-status"><option value="">ทุกสถานะรวม</option>
+      <option value="done">ดำเนินการแล้วครบ</option>
+      <option value="progress">กำลังดำเนินการ</option>
+      <option value="pending">ยังไม่เริ่ม</option>
+    </select>
+    <input type="text" id="f-search" placeholder="ค้นหา รหัสสถานพยาบาล / ชื่อหน่วยงาน / ผู้รับผิดชอบ">
+    <button class="reset" id="f-reset">ล้างตัวกรอง</button>
+    <span class="count" id="f-count"></span>
+  </div>
+
+  <div class="legend" style="justify-content:space-between;">
+    <div style="display:flex; gap:16px; align-items:center;">
+      <span><span class="dot pending"></span>รอดำเนินการ</span>
+      <span><span class="dot progress"></span>กำลังดำเนินการ</span>
+      <span><span class="dot done"></span>ดำเนินการแล้ว</span>
+      <span style="margin-left:4px;">ลำดับขั้นตอนหลัก: Migration → Transfer → ตรวจสอบข้อมูล → ประกาศใช้งาน </span>
+    </div>
+    <div class="view-toggle">
+      <button id="view-btn-site" class="active">รายหน่วยงาน</button>
+      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
+    </div>
+  </div>
+
+  <div id="owner-view">
+    <div class="owner-grid" id="owner-grid"></div>
+  </div>
+
+  <div class="table-card" id="site-view">
+    <table>
+      <thead>
+        <tr>
+          <th>รหัสสถานพยาบาล</th>
+          <th>ชื่อหน่วยงาน</th>
+          <th>จังหวัด</th>
+          <th>เขต</th>
+          <th>โปรแกรมเดิม</th>
+          <th>Anydesk ID</th>
+          <th>ผู้รับผิดชอบ</th>
+          <th>วันที่พร้อมขึ้นระบบ</th>
+          <th>ขั้นตอนการดำเนินการ</th>
+          <th>สถานะล่าสุด</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <div class="empty" id="empty-state" style="display:none;">ไม่พบข้อมูลที่ตรงกับตัวกรอง</div>
+  </div><!-- /#site-view -->
+
+  <p class="source-note" id="source-note">แหล่งข้อมูล: <span class="tag">Google Sheet (published CSV)</span> <span id="load-status">กำลังโหลดข้อมูล...</span> <button class="reset" id="btn-refresh" style="padding:0;">รีเฟรชข้อมูล</button></p>
+
+</div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub?gid=1867606921&single=true&output=csv';
+
+const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done' };
+const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว' };
+const STAGES = ['migration','transfer','verify','launch'];
+const STAGE_LABEL = { migration:'Migration', transfer:'Transfer', verify:'ตรวจสอบข้อมูล', launch:'ประกาศใช้งาน' };
+
+// ตำแหน่งคอลัมน์ใน Google Sheet (อ้างอิงตามตัวอักษรคอลัมน์ เช่น A, B, ... AA, AB)
+// map ตรงตามที่ยืนยันแล้ว ถ้าคอลัมน์ไหนขยับตำแหน่งในชีทจริง แก้ค่าตรงนี้ได้เลย
+const COLUMN_LETTER = {
+  owner: 'C',        // ผู้รับผิดชอบ
+  readyDate: 'D',     // วันที่พร้อมขึ้นระบบ
+  code: 'E',          // รหัสสถานพยาบาล
+  org: 'F',           // ชื่อหน่วยงาน
+  province: 'G',      // จังหวัด
+  region: 'I',        // เขต
+  oldProgram: 'K',     // โปรแกรมเดิม
+  anydesk: 'W',        // Anydesk (เลข ID อ้างอิง ไม่นับสถานะ)
+  migration: 'AA',     // สถานะ Migration
+  transfer: 'AB',      // สถานะ Transfer
+  verify: 'AC',        // ตรวจสอบข้อมูล
+  launch: 'AD',        // ประกาศใช้งาน
+};
+
+// แปลงตัวอักษรคอลัมน์ (A, B, ... Z, AA, AB, ...) เป็นตำแหน่ง index แบบ 0-based
+function colLetterToIndex(letters){
+  let n = 0;
+  for (let i = 0; i < letters.length; i++){
+    n = n * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return n - 1;
+}
+
+// ตัวอย่างข้อมูลสำรอง ใช้เฉพาะตอนดึงจาก Google Sheet ไม่สำเร็จ
+const SAMPLE_DATA = [
+  { code:'10670', org:'รพ.สต.บ้านหนองบัว', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-20', anydeskId:'1956633490', migration:'done', transfer:'done', verify:'done', launch:'done' },
+  { code:'10671', org:'รพ.สต.ท่าพระ', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-22', anydeskId:'1877203451', migration:'done', transfer:'progress', verify:'pending', launch:'pending' },
+  { code:'10802', org:'รพ.สต.นาจาน', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-18', anydeskId:'1023845672', migration:'progress', verify:'pending', transfer:'pending', launch:'pending' },
+  { code:'10803', org:'รพ.สต.เขวาใหญ่', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-25', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending' },
+  { code:'21044', org:'รพ.สต.บางพลี', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1665789023', migration:'done', transfer:'done', verify:'progress', launch:'pending' },
+  { code:'21045', org:'รพ.สต.บางเสาธง', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1443298761', migration:'done', transfer:'done', verify:'done', launch:'done' },
+  { code:'30115', org:'รพ.สต.หนองปลิง', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending' },
+  { code:'30116', org:'รพ.สต.โคกกรวด', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'1789456123', migration:'progress', transfer:'pending', verify:'pending', launch:'pending' },
+];
+
+let DATA = [];
+
+// CSV parser ง่ายๆ รองรับ field ที่ครอบด้วย double quote และมี comma/newline อยู่ข้างใน
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i], next = text[i+1];
+    if (inQuotes){
+      if (c === '"' && next === '"'){ field += '"'; i++; }
+      else if (c === '"'){ inQuotes = false; }
+      else { field += c; }
+    } else {
+      if (c === '"'){ inQuotes = true; }
+      else if (c === ','){ row.push(field); field = ''; }
+      else if (c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r'){ /* skip */ }
+      else { field += c; }
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(cell => cell.trim() !== ''));
+}
+
+function normalizeStatus(value){
+  const v = (value || '').trim();
+  if (!v) return STATUS.PENDING;
+  if (v.includes('ดำเนินการแล้ว') || v.includes('เสร็จ') || v.toLowerCase() === 'done') return STATUS.DONE;
+  if (v.includes('กำลัง') || v.toLowerCase() === 'in progress') return STATUS.PROGRESS;
+  if (v.includes('รอ')) return STATUS.PENDING;
+  return STATUS.PENDING;
+}
+
+function csvRowsToData(rows){
+  const idx = {};
+  Object.keys(COLUMN_LETTER).forEach(key => {
+    idx[key] = colLetterToIndex(COLUMN_LETTER[key]);
+  });
+  return rows.slice(1).map(r => {
+    const get = key => (r[idx[key]] || '').trim();
+    return {
+      code: get('code'),
+      org: get('org'),
+      province: get('province'),
+      region: get('region'),
+      oldProgram: get('oldProgram'),
+      owner: get('owner'),
+      readyDate: get('readyDate'),
+      anydeskId: get('anydesk'),
+      migration: normalizeStatus(get('migration')),
+      transfer: normalizeStatus(get('transfer')),
+      verify: normalizeStatus(get('verify')),
+      launch: normalizeStatus(get('launch')),
+    };
+  }).filter(r => r.code || r.org);
+}
+
+async function loadData(){
+  const statusEl = document.getElementById('load-status');
+  statusEl.textContent = 'กำลังโหลดข้อมูล...';
+  try {
+    const res = await fetch(CSV_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const parsed = csvRowsToData(rows);
+    if (parsed.length === 0) throw new Error('ไม่พบข้อมูลในชีท');
+    DATA = parsed;
+    statusEl.textContent = `เชื่อมต่อสำเร็จ — ${DATA.length} รายการ`;
+  } catch (err) {
+    DATA = SAMPLE_DATA;
+    statusEl.textContent = 'ดึงข้อมูลจาก Google Sheet ไม่สำเร็จ (' + err.message + ') — กำลังแสดงข้อมูลตัวอย่างแทน ลองกดรีเฟรช หรือเปิดไฟล์นี้ผ่านเว็บเซิร์ฟเวอร์ท้องถิ่นแทนการเปิดไฟล์ตรงๆ';
+  }
+  populateFilterOptions();
+  renderKPIs(DATA);
+  renderTable(DATA);
+  renderOwnerView(DATA);
+}
+
+function overallStatus(row){
+  const states = STAGES.map(s => row[s]);
+  if (states.every(s => s === 'done')) return STATUS.DONE;
+  if (states.every(s => s === 'pending')) return STATUS.PENDING;
+  return STATUS.PROGRESS;
+}
+function initials(name){
+  const parts = name.trim().split(' ');
+  return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+}
+function formatDate(iso){
+  const [y,m,d] = iso.split('-');
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function populateFilterOptions(){
+  const regions = [...new Set(DATA.map(r => r.region).filter(Boolean))].sort();
+  const provinces = [...new Set(DATA.map(r => r.province).filter(Boolean))].sort();
+  const regionSel = document.getElementById('f-region');
+  const provinceSel = document.getElementById('f-province');
+  const ownerSel = document.getElementById('f-owner');
+  const prevRegion = regionSel.value, prevProvince = provinceSel.value, prevOwner = ownerSel.value;
+  regionSel.innerHTML = '<option value="">ทุกเขต</option>';
+  provinceSel.innerHTML = '<option value="">ทุกจังหวัด</option>';
+  ownerSel.innerHTML = '<option value="">ทุกผู้รับผิดชอบ</option>';
+  regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; regionSel.appendChild(o); });
+  provinces.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; provinceSel.appendChild(o); });
+
+  const ownerCounts = {};
+  DATA.forEach(r => { if (r.owner){ ownerCounts[r.owner] = (ownerCounts[r.owner] || 0) + 1; } });
+  Object.keys(ownerCounts).sort((a,b) => a.localeCompare(b, 'th')).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name;
+    o.textContent = `${name} (${ownerCounts[name]} แห่ง)`;
+    ownerSel.appendChild(o);
+  });
+
+  regionSel.value = prevRegion; provinceSel.value = prevProvince; ownerSel.value = prevOwner;
+}
+
+function renderKPIs(rows){
+  const total = rows.length;
+  const done = rows.filter(r => overallStatus(r) === STATUS.DONE).length;
+  const progress = rows.filter(r => overallStatus(r) === STATUS.PROGRESS).length;
+  const pending = rows.filter(r => overallStatus(r) === STATUS.PENDING).length;
+  const totalSteps = total * STAGES.length;
+  const doneSteps = rows.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
+  const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-done').textContent = done;
+  document.getElementById('kpi-progress').textContent = progress;
+  document.getElementById('kpi-pending').textContent = pending;
+  document.getElementById('kpi-percent').textContent = percent + '%';
+  document.getElementById('kpi-bar').style.width = percent + '%';
+}
+
+function renderTable(rows){
+  const body = document.getElementById('table-body');
+  const empty = document.getElementById('empty-state');
+  body.innerHTML = '';
+  document.getElementById('f-count').textContent = `แสดง ${rows.length} จาก ${DATA.length} หน่วยงาน`;
+
+  if (rows.length === 0){ empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  rows.forEach(row => {
+    const st = overallStatus(row);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="code">${row.code}</td>
+      <td class="org">${row.org}</td>
+      <td>${row.province}</td>
+      <td><span class="region-tag">${row.region}</span></td>
+      <td>${row.oldProgram}</td>
+      <td class="code">${row.anydeskId ? row.anydeskId : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td>
+        <div class="owner-cell">
+          <span class="avatar">${initials(row.owner)}</span>
+          <span>${row.owner}</span>
+        </div>
+      </td>
+      <td>${formatDate(row.readyDate)}</td>
+      <td>
+        <div class="pipeline" title="${STAGES.map(s => STAGE_LABEL[s] + ': ' + STATUS_LABEL[row[s]]).join(' / ')}">
+          ${STAGES.map(s => `<div class="step ${row[s]}"></div>`).join('')}
+        </div>
+      </td>
+      <td><span class="badge ${st}"><span class="dot"></span>${STATUS_LABEL[st]}</span></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderOwnerView(rows){
+  const grid = document.getElementById('owner-grid');
+  grid.innerHTML = '';
+
+  const owners = {};
+  rows.forEach(r => {
+    if (!r.owner) return;
+    if (!owners[r.owner]) owners[r.owner] = [];
+    owners[r.owner].push(r);
+  });
+
+  const names = Object.keys(owners).sort((a,b) => {
+    // เรียงคนที่ยังมีงานค้างเยอะไว้บนสุด เพื่อให้หัวหน้าดูจุดที่ต้องติดตามก่อน
+    const pendingA = owners[a].filter(r => overallStatus(r) === STATUS.PENDING).length;
+    const pendingB = owners[b].filter(r => overallStatus(r) === STATUS.PENDING).length;
+    if (pendingB !== pendingA) return pendingB - pendingA;
+    return a.localeCompare(b, 'th');
+  });
+
+  if (names.length === 0){
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">ไม่พบข้อมูลที่ตรงกับตัวกรอง</div>';
+    return;
+  }
+
+  names.forEach(name => {
+    const list = owners[name];
+    const total = list.length;
+    const done = list.filter(r => overallStatus(r) === STATUS.DONE).length;
+    const progress = list.filter(r => overallStatus(r) === STATUS.PROGRESS).length;
+    const pending = list.filter(r => overallStatus(r) === STATUS.PENDING).length;
+    const totalSteps = total * STAGES.length;
+    const doneSteps = list.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
+    const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'owner-card' + (pending > 0 && done === 0 ? ' needs-attention' : '');
+    card.innerHTML = `
+      <div class="owner-card-head">
+        <span class="avatar">${initials(name)}</span>
+        <div>
+          <div class="owner-card-name">${name}</div>
+          <div class="owner-card-count">รับผิดชอบ ${total} หน่วยงาน</div>
+        </div>
+        <span class="owner-percent" style="color:var(--accent)">${percent}%</span>
+      </div>
+      <div class="owner-stackbar" title="ดำเนินการแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending}">
+        ${done ? `<div class="seg done" style="flex:${done}"></div>` : ''}
+        ${progress ? `<div class="seg progress" style="flex:${progress}"></div>` : ''}
+        ${pending ? `<div class="seg pending" style="flex:${pending}"></div>` : ''}
+      </div>
+      <div class="owner-stats">
+        <span class="owner-stat"><span class="dot done"></span>เสร็จแล้ว <b>${done}</b></span>
+        <span class="owner-stat"><span class="dot progress"></span>กำลังทำ <b>${progress}</b></span>
+        <span class="owner-stat"><span class="dot pending"></span>ยังไม่เริ่ม <b>${pending}</b></span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+let currentView = 'site';
+function setView(view){
+  currentView = view;
+  document.getElementById('site-view').style.display = view === 'site' ? '' : 'none';
+  document.getElementById('owner-view').style.display = view === 'owner' ? 'block' : 'none';
+  document.getElementById('view-btn-site').classList.toggle('active', view === 'site');
+  document.getElementById('view-btn-owner').classList.toggle('active', view === 'owner');
+}
+document.getElementById('view-btn-site').addEventListener('click', () => setView('site'));
+document.getElementById('view-btn-owner').addEventListener('click', () => setView('owner'));
+
+function applyFilters(){
+  const region = document.getElementById('f-region').value;
+  const province = document.getElementById('f-province').value;
+  const owner = document.getElementById('f-owner').value;
+  const status = document.getElementById('f-status').value;
+  const search = document.getElementById('f-search').value.trim().toLowerCase();
+
+  const filtered = DATA.filter(row => {
+    if (region && row.region !== region) return false;
+    if (province && row.province !== province) return false;
+    if (owner && row.owner !== owner) return false;
+    if (status && overallStatus(row) !== status) return false;
+    if (search){
+      const hay = (row.code + ' ' + row.org + ' ' + row.owner).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  renderTable(filtered);
+  renderOwnerView(filtered);
+}
+
+['f-region','f-province','f-owner','f-status'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+document.getElementById('f-search').addEventListener('input', applyFilters);
+document.getElementById('f-reset').addEventListener('click', () => {
+  document.getElementById('f-region').value = '';
+  document.getElementById('f-province').value = '';
+  document.getElementById('f-owner').value = '';
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-search').value = '';
+  applyFilters();
+});
+
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+  loadData();
+});
+
+document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+
+loadData();
+</script>
+</body>
+</html>
