@@ -32,6 +32,10 @@
     --done-bg: #E5F4E7;
     --done-text: #1F7A34;
     --done-dot: #2E9E4A;
+
+    --overdue-bg: #FBE8E7;
+    --overdue-text: #B23B30;
+    --overdue-dot: #D6493C;
   }
   *{ box-sizing: border-box; }
   body{
@@ -87,7 +91,7 @@
   /* KPI cards */
   .kpi-grid{
     display:grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 12px;
     margin-bottom: 22px;
   }
@@ -112,6 +116,8 @@
   .kpi .value.small{ font-size: 22px; }
   .kpi.accent{ border-color: var(--accent); background: var(--accent-tint); }
   .kpi.accent .value{ color: var(--accent); }
+  .kpi.danger{ border-color: var(--overdue-dot); background: var(--overdue-bg); }
+  .kpi.danger .value{ color: var(--overdue-text); }
   .kpi .bar{
     height: 5px;
     border-radius: 4px;
@@ -157,6 +163,20 @@
     cursor: pointer;
     padding: 8px 4px;
   }
+  .deadline-box{
+    display:flex; align-items:center; gap:8px;
+    font-size: 13.5px; color: var(--text-secondary);
+    background: var(--surface-muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px;
+  }
+  .deadline-box input[type="date"]{
+    font-family: 'Sarabun', sans-serif; font-size: 13.5px;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    padding: 5px 8px; background: var(--surface); color: var(--text-primary);
+  }
+  .deadline-box .deadline-flag{ font-weight: 600; white-space: nowrap; }
+  .deadline-box .deadline-flag.ok{ color: var(--done-text); }
+  .deadline-box .deadline-flag.over{ color: var(--overdue-text); }
 
   /* legend */
   .legend{
@@ -235,6 +255,9 @@
   .badge.pending{ background: var(--pending-bg); color: var(--pending-text); }
   .badge.progress{ background: var(--progress-bg); color: var(--progress-text); }
   .badge.done{ background: var(--done-bg); color: var(--done-text); }
+  .badge.overdue{ background: var(--overdue-bg); color: var(--overdue-text); }
+
+  .dot.overdue{ background: var(--overdue-dot); }
 
   .empty{
     text-align:center; padding: 48px 20px; color: var(--text-muted); font-size: 14px;
@@ -277,6 +300,7 @@
     border-radius: 12px; padding: 16px 18px;
   }
   .owner-card.needs-attention{ border-color: var(--pending-dot); }
+  .owner-card.overdue-alert{ border-color: var(--overdue-dot); background: linear-gradient(180deg, var(--overdue-bg) 0%, var(--surface) 60px); }
   .owner-card-head{ display:flex; align-items:center; gap:10px; margin-bottom: 12px; }
   .owner-card .avatar{ width: 34px; height: 34px; font-size: 13px; }
   .owner-card-name{ font-weight: 600; color: var(--text-primary); font-size: 14.5px; }
@@ -288,6 +312,7 @@
   .owner-stackbar .seg.done{ background: var(--done-dot); }
   .owner-stackbar .seg.progress{ background: var(--progress-dot); }
   .owner-stackbar .seg.pending{ background: var(--pending-bg); }
+  .owner-stackbar .seg.overdue{ background: var(--overdue-dot); }
   .owner-stats{ display:flex; gap: 14px; flex-wrap: wrap; }
   .owner-stat{ font-size: 12.5px; color: var(--text-secondary); display:flex; align-items:center; gap:5px; }
   .owner-stat .dot{ width:7px; height:7px; border-radius:50%; }
@@ -334,9 +359,18 @@
       <p class="value" id="kpi-percent">0%</p>
       <div class="bar"><div id="kpi-bar" style="width:0%"></div></div>
     </div>
+    <div class="kpi danger">
+      <p class="label">เลยกำหนดแล้ว</p>
+      <p class="value" id="kpi-overdue">0</p>
+    </div>
   </div>
 
   <div class="filters">
+    <div class="deadline-box">
+      <span>กำหนดเสร็จ:</span>
+      <input type="date" id="deadline-input" value="2026-08-21">
+      <span class="deadline-flag" id="deadline-flag"></span>
+    </div>
     <select id="f-region"><option value="">ทุกเขต</option></select>
     <select id="f-province"><option value="">ทุกจังหวัด</option></select>
     <select id="f-owner"><option value="">ทุกผู้รับผิดชอบ</option></select>
@@ -344,6 +378,7 @@
       <option value="done">ดำเนินการแล้วครบ</option>
       <option value="progress">กำลังดำเนินการ</option>
       <option value="pending">ยังไม่เริ่ม</option>
+      <option value="overdue">เลยกำหนด</option>
     </select>
     <input type="text" id="f-search" placeholder="ค้นหา รหัสสถานพยาบาล / ชื่อหน่วยงาน / ผู้รับผิดชอบ">
     <button class="reset" id="f-reset">ล้างตัวกรอง</button>
@@ -355,6 +390,7 @@
       <span><span class="dot pending"></span>รอดำเนินการ</span>
       <span><span class="dot progress"></span>กำลังดำเนินการ</span>
       <span><span class="dot done"></span>ดำเนินการแล้ว</span>
+      <span><span class="dot overdue"></span>เลยกำหนด</span>
       <span style="margin-left:4px;">ลำดับขั้นตอนหลัก: Migration → Transfer → ตรวจสอบข้อมูล → ประกาศใช้งาน </span>
     </div>
     <div class="view-toggle">
@@ -395,8 +431,8 @@
 <script>
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub?gid=1867606921&single=true&output=csv';
 
-const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done' };
-const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว' };
+const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done', OVERDUE: 'overdue' };
+const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว', overdue: 'เลยกำหนด' };
 const STAGES = ['migration','transfer','verify','launch'];
 const STAGE_LABEL = { migration:'Migration', transfer:'Transfer', verify:'ตรวจสอบข้อมูล', launch:'ประกาศใช้งาน' };
 
@@ -523,6 +559,43 @@ function overallStatus(row){
   if (states.every(s => s === 'pending')) return STATUS.PENDING;
   return STATUS.PROGRESS;
 }
+
+// ----- กำหนดเสร็จ (deadline) -----
+// deadline แก้ได้ตลอดผ่านช่อง input ด้านบน ไม่ต้องแก้โค้ด — พิมพ์วันที่ใหม่แล้วระบบคำนวณสถานะ "เลยกำหนด" ให้เองทันที
+let DEADLINE_DATE = document.getElementById('deadline-input').value;
+
+function getDeadlineEndOfDay(){
+  return new Date(DEADLINE_DATE + 'T23:59:59');
+}
+function isPastDeadline(){
+  return new Date() > getDeadlineEndOfDay();
+}
+// สถานะที่ใช้แสดงจริง (badge หลัก / KPI / การ์ด BA) — เหมือน overallStatus ทุกประการ
+// ยกเว้นกรณี "เลยกำหนดเสร็จที่ตั้งไว้แล้วแต่ยังไม่ done" จะกลายเป็น overdue แทน
+function displayStatus(row){
+  const base = overallStatus(row);
+  if (base === STATUS.DONE) return STATUS.DONE;
+  if (isPastDeadline()) return STATUS.OVERDUE;
+  return base;
+}
+function updateDeadlineFlag(){
+  const flag = document.getElementById('deadline-flag');
+  const diffDays = Math.floor((new Date() - getDeadlineEndOfDay()) / 86400000);
+  if (diffDays > 0){
+    flag.textContent = `เลยกำหนดแล้ว ${diffDays} วัน`;
+    flag.className = 'deadline-flag over';
+  } else {
+    flag.textContent = diffDays === 0 ? 'ถึงกำหนดวันนี้' : `เหลืออีก ${Math.abs(diffDays)} วัน`;
+    flag.className = 'deadline-flag ok';
+  }
+}
+document.getElementById('deadline-input').addEventListener('change', (e) => {
+  DEADLINE_DATE = e.target.value || DEADLINE_DATE;
+  updateDeadlineFlag();
+  renderKPIs(DATA);
+  applyFilters();
+});
+
 function initials(name){
   const parts = name.trim().split(' ');
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
@@ -560,9 +633,10 @@ function populateFilterOptions(){
 
 function renderKPIs(rows){
   const total = rows.length;
-  const done = rows.filter(r => overallStatus(r) === STATUS.DONE).length;
-  const progress = rows.filter(r => overallStatus(r) === STATUS.PROGRESS).length;
-  const pending = rows.filter(r => overallStatus(r) === STATUS.PENDING).length;
+  const done = rows.filter(r => displayStatus(r) === STATUS.DONE).length;
+  const progress = rows.filter(r => displayStatus(r) === STATUS.PROGRESS).length;
+  const pending = rows.filter(r => displayStatus(r) === STATUS.PENDING).length;
+  const overdue = rows.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
   const totalSteps = total * STAGES.length;
   const doneSteps = rows.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
   const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
@@ -573,6 +647,8 @@ function renderKPIs(rows){
   document.getElementById('kpi-pending').textContent = pending;
   document.getElementById('kpi-percent').textContent = percent + '%';
   document.getElementById('kpi-bar').style.width = percent + '%';
+  document.getElementById('kpi-overdue').textContent = overdue;
+  updateDeadlineFlag();
 }
 
 function renderTable(rows){
@@ -585,7 +661,7 @@ function renderTable(rows){
   empty.style.display = 'none';
 
   rows.forEach(row => {
-    const st = overallStatus(row);
+    const st = displayStatus(row);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="code">${row.code}</td>
@@ -624,9 +700,12 @@ function renderOwnerView(rows){
   });
 
   const names = Object.keys(owners).sort((a,b) => {
-    // เรียงคนที่ยังมีงานค้างเยอะไว้บนสุด เพื่อให้หัวหน้าดูจุดที่ต้องติดตามก่อน
-    const pendingA = owners[a].filter(r => overallStatus(r) === STATUS.PENDING).length;
-    const pendingB = owners[b].filter(r => overallStatus(r) === STATUS.PENDING).length;
+    // เรียงคนที่มีงาน "เลยกำหนด" ก่อน แล้วตามด้วยคนที่มีงานค้าง (pending) เยอะสุด
+    const ov = owners[b].filter(r => displayStatus(r) === STATUS.OVERDUE).length
+             - owners[a].filter(r => displayStatus(r) === STATUS.OVERDUE).length;
+    if (ov !== 0) return ov;
+    const pendingA = owners[a].filter(r => displayStatus(r) === STATUS.PENDING).length;
+    const pendingB = owners[b].filter(r => displayStatus(r) === STATUS.PENDING).length;
     if (pendingB !== pendingA) return pendingB - pendingA;
     return a.localeCompare(b, 'th');
   });
@@ -639,15 +718,17 @@ function renderOwnerView(rows){
   names.forEach(name => {
     const list = owners[name];
     const total = list.length;
-    const done = list.filter(r => overallStatus(r) === STATUS.DONE).length;
-    const progress = list.filter(r => overallStatus(r) === STATUS.PROGRESS).length;
-    const pending = list.filter(r => overallStatus(r) === STATUS.PENDING).length;
-    const totalSteps = total * STAGES.length;
-    const doneSteps = list.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
-    const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
+    const done = list.filter(r => displayStatus(r) === STATUS.DONE).length;
+    const progress = list.filter(r => displayStatus(r) === STATUS.PROGRESS).length;
+    const pending = list.filter(r => displayStatus(r) === STATUS.PENDING).length;
+    const overdue = list.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
+    // % = อัตราความสำเร็จ นับเฉพาะหน่วยงานที่ "เสร็จแล้ว" เทียบกับทั้งหมดที่รับผิดชอบ
+    // (จับความสำเร็จในการทำให้เสร็จก่อน/ทันกำหนดเสร็จที่ตั้งไว้ด้านบน)
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    const percentColor = overdue > 0 ? 'var(--overdue-text)' : (percent === 100 ? 'var(--done-text)' : 'var(--accent)');
 
     const card = document.createElement('div');
-    card.className = 'owner-card' + (pending > 0 && done === 0 ? ' needs-attention' : '');
+    card.className = 'owner-card' + (overdue > 0 ? ' overdue-alert' : (pending > 0 && done === 0 ? ' needs-attention' : ''));
     card.innerHTML = `
       <div class="owner-card-head">
         <span class="avatar">${initials(name)}</span>
@@ -655,17 +736,19 @@ function renderOwnerView(rows){
           <div class="owner-card-name">${name}</div>
           <div class="owner-card-count">รับผิดชอบ ${total} หน่วยงาน</div>
         </div>
-        <span class="owner-percent" style="color:var(--accent)">${percent}%</span>
+        <span class="owner-percent" style="color:${percentColor}">${percent}%</span>
       </div>
-      <div class="owner-stackbar" title="ดำเนินการแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending}">
+      <div class="owner-stackbar" title="เสร็จแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending} / เลยกำหนด ${overdue}">
         ${done ? `<div class="seg done" style="flex:${done}"></div>` : ''}
         ${progress ? `<div class="seg progress" style="flex:${progress}"></div>` : ''}
         ${pending ? `<div class="seg pending" style="flex:${pending}"></div>` : ''}
+        ${overdue ? `<div class="seg overdue" style="flex:${overdue}"></div>` : ''}
       </div>
       <div class="owner-stats">
         <span class="owner-stat"><span class="dot done"></span>เสร็จแล้ว <b>${done}</b></span>
         <span class="owner-stat"><span class="dot progress"></span>กำลังทำ <b>${progress}</b></span>
         <span class="owner-stat"><span class="dot pending"></span>ยังไม่เริ่ม <b>${pending}</b></span>
+        ${overdue ? `<span class="owner-stat"><span class="dot overdue"></span>เลยกำหนด <b>${overdue}</b></span>` : ''}
       </div>
     `;
     grid.appendChild(card);
@@ -694,7 +777,7 @@ function applyFilters(){
     if (region && row.region !== region) return false;
     if (province && row.province !== province) return false;
     if (owner && row.owner !== owner) return false;
-    if (status && overallStatus(row) !== status) return false;
+    if (status && displayStatus(row) !== status) return false;
     if (search){
       const hay = (row.code + ' ' + row.org + ' ' + row.owner).toLowerCase();
       if (!hay.includes(search)) return false;
