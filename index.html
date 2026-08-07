@@ -407,6 +407,12 @@
       <option value="notransfer">ไม่โอนข้อมูล</option>
     </select>
     <select id="f-transfer"><option value="">ทุกสถานะโอนข้อมูล</option></select>
+    <div class="deadline-box">
+      <span>วันที่พร้อมขึ้นระบบ:</span>
+      <input type="date" id="f-date-from" title="ตั้งแต่วันที่">
+      <span>ถึง</span>
+      <input type="date" id="f-date-to" title="ถึงวันที่">
+    </div>
     <input type="text" id="f-search" placeholder="ค้นหา รหัสสถานพยาบาล / ชื่อหน่วยงาน / ผู้รับผิดชอบ">
     <button class="reset" id="f-reset">ล้างตัวกรอง</button>
     <span class="count" id="f-count"></span>
@@ -423,7 +429,7 @@
     </div>
     <div class="view-toggle">
       <button id="view-btn-site" class="active">รายหน่วยงาน</button>
-      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
+      <button id="view-btn-owner">รายชื่อผู้รับผิดชอบ (รายบุคคล)</button>
     </div>
   </div>
 
@@ -599,6 +605,7 @@ async function loadData(){
   }
   populateFilterOptions();
   MAX_READY_DATE = computeMaxReadyDate();
+  updateDateFilterBounds();
   renderKPIs(DATA);
   renderTable(DATA);
   renderOwnerView(DATA);
@@ -646,6 +653,25 @@ function computeMaxReadyDate(){
     if (d && (!max || d > max)) max = d;
   });
   return max;
+}
+function computeMinReadyDate(){
+  let min = null;
+  DATA.forEach(r => {
+    const d = parseSheetDate(r.readyDate);
+    if (d && (!min || d < min)) min = d;
+  });
+  return min;
+}
+function toInputDateValue(d){
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function updateDateFilterBounds(){
+  const min = computeMinReadyDate(), max = MAX_READY_DATE;
+  const fromInput = document.getElementById('f-date-from');
+  const toInput = document.getElementById('f-date-to');
+  if (min){ fromInput.min = toInputDateValue(min); toInput.min = toInputDateValue(min); }
+  if (max){ fromInput.max = toInputDateValue(max); toInput.max = toInputDateValue(max); }
 }
 function formatDateObj(d){
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -884,6 +910,8 @@ function applyFilters(){
   const owner = document.getElementById('f-owner').value;
   const status = document.getElementById('f-status').value;
   const transfer = document.getElementById('f-transfer').value;
+  const dateFrom = document.getElementById('f-date-from').value;
+  const dateTo = document.getElementById('f-date-to').value;
   const search = document.getElementById('f-search').value.trim().toLowerCase();
 
   const filtered = DATA.filter(row => {
@@ -892,6 +920,13 @@ function applyFilters(){
     if (owner && row.owner !== owner) return false;
     if (status && displayStatus(row) !== status) return false;
     if (transfer && row.transferStatusLabel !== transfer) return false;
+    if (dateFrom || dateTo){
+      const d = parseSheetDate(row.readyDate);
+      if (!d) return false; // ไม่มีวันที่ให้เทียบ ตัดออกเมื่อเปิดตัวกรองวันที่
+      const dTime = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      if (dateFrom && dTime < new Date(dateFrom + 'T00:00:00').getTime()) return false;
+      if (dateTo && dTime > new Date(dateTo + 'T00:00:00').getTime()) return false;
+    }
     if (search){
       const hay = (row.code + ' ' + row.org + ' ' + row.owner).toLowerCase();
       if (!hay.includes(search)) return false;
@@ -902,7 +937,7 @@ function applyFilters(){
   renderOwnerView(filtered);
 }
 
-['f-region','f-province','f-owner','f-status','f-transfer'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+['f-region','f-province','f-owner','f-status','f-transfer','f-date-from','f-date-to'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
 document.getElementById('f-search').addEventListener('input', applyFilters);
 document.getElementById('f-reset').addEventListener('click', () => {
   document.getElementById('f-region').value = '';
@@ -910,6 +945,8 @@ document.getElementById('f-reset').addEventListener('click', () => {
   document.getElementById('f-owner').value = '';
   document.getElementById('f-status').value = '';
   document.getElementById('f-transfer').value = '';
+  document.getElementById('f-date-from').value = '';
+  document.getElementById('f-date-to').value = '';
   document.getElementById('f-search').value = '';
   applyFilters();
 });
