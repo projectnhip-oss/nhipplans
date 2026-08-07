@@ -91,7 +91,7 @@
   /* KPI cards */
   .kpi-grid{
     display:grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
     margin-bottom: 22px;
   }
@@ -177,6 +177,14 @@
   .deadline-box .deadline-flag{ font-weight: 600; white-space: nowrap; }
   .deadline-box .deadline-flag.ok{ color: var(--done-text); }
   .deadline-box .deadline-flag.over{ color: var(--overdue-text); }
+  .round-toggle{
+    display:flex; align-items:center; gap:6px;
+    font-size: 12.5px; color: var(--text-secondary);
+    background: var(--surface-muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+  }
+  .round-toggle input{ cursor: pointer; }
+  .round-toggle #max-date-label{ color: var(--text-muted); font-size: 11.5px; }
 
   /* legend */
   .legend{
@@ -256,8 +264,16 @@
   .badge.progress{ background: var(--progress-bg); color: var(--progress-text); }
   .badge.done{ background: var(--done-bg); color: var(--done-text); }
   .badge.overdue{ background: var(--overdue-bg); color: var(--overdue-text); }
+  .badge.notransfer{ background: var(--overdue-bg); color: var(--overdue-text); border: 1px solid var(--overdue-dot); }
+
+  .badge.ts-confirm{ background: var(--done-bg); color: var(--done-text); }
+  .badge.ts-notransfer{ background: var(--overdue-bg); color: var(--overdue-text); }
+  .badge.ts-round2, .badge.ts-round3, .badge.ts-moved{ background: #FCE9D6; color: #A15116; }
+  .badge.ts-inquiry{ background: #EDE7F6; color: #5B3E96; }
+  .badge.ts-none, .badge.ts-other{ background: var(--surface-muted); color: var(--text-muted); }
 
   .dot.overdue{ background: var(--overdue-dot); }
+  .dot.notransfer{ background: var(--overdue-dot); border: 1px solid var(--overdue-text); }
 
   .empty{
     text-align:center; padding: 48px 20px; color: var(--text-muted); font-size: 14px;
@@ -313,6 +329,7 @@
   .owner-stackbar .seg.progress{ background: var(--progress-dot); }
   .owner-stackbar .seg.pending{ background: var(--pending-bg); }
   .owner-stackbar .seg.overdue{ background: var(--overdue-dot); }
+  .owner-stackbar .seg.notransfer{ background: var(--overdue-dot); opacity: 0.7; }
   .owner-stats{ display:flex; gap: 14px; flex-wrap: wrap; }
   .owner-stat{ font-size: 12.5px; color: var(--text-secondary); display:flex; align-items:center; gap:5px; }
   .owner-stat .dot{ width:7px; height:7px; border-radius:50%; }
@@ -363,14 +380,22 @@
       <p class="label">เลยกำหนดแล้ว</p>
       <p class="value" id="kpi-overdue">0</p>
     </div>
+    <div class="kpi danger">
+      <p class="label">ไม่โอนข้อมูล</p>
+      <p class="value" id="kpi-notransfer">0</p>
+    </div>
   </div>
 
   <div class="filters">
     <div class="deadline-box">
-      <span>กำหนดเสร็จ:</span>
-      <input type="date" id="deadline-input" value="2026-08-21">
+      <span>ตรวจสอบสถานะ ณ วันที่:</span>
+      <input type="date" id="deadline-input">
       <span class="deadline-flag" id="deadline-flag"></span>
     </div>
+    <label class="round-toggle" for="round-deadline-toggle">
+      <input type="checkbox" id="round-deadline-toggle">
+      ใช้เดดไลน์รวมของรอบล่าสุด <span id="max-date-label"></span>
+    </label>
     <select id="f-region"><option value="">ทุกเขต</option></select>
     <select id="f-province"><option value="">ทุกจังหวัด</option></select>
     <select id="f-owner"><option value="">ทุกผู้รับผิดชอบ</option></select>
@@ -379,7 +404,9 @@
       <option value="progress">กำลังดำเนินการ</option>
       <option value="pending">ยังไม่เริ่ม</option>
       <option value="overdue">เลยกำหนด</option>
+      <option value="notransfer">ไม่โอนข้อมูล</option>
     </select>
+    <select id="f-transfer"><option value="">ทุกสถานะโอนข้อมูล</option></select>
     <input type="text" id="f-search" placeholder="ค้นหา รหัสสถานพยาบาล / ชื่อหน่วยงาน / ผู้รับผิดชอบ">
     <button class="reset" id="f-reset">ล้างตัวกรอง</button>
     <span class="count" id="f-count"></span>
@@ -391,11 +418,12 @@
       <span><span class="dot progress"></span>กำลังดำเนินการ</span>
       <span><span class="dot done"></span>ดำเนินการแล้ว</span>
       <span><span class="dot overdue"></span>เลยกำหนด</span>
+      <span><span class="dot notransfer"></span>ไม่โอนข้อมูล</span>
       <span style="margin-left:4px;">ลำดับขั้นตอนหลัก: Migration → Transfer → ตรวจสอบข้อมูล → ประกาศใช้งาน </span>
     </div>
     <div class="view-toggle">
       <button id="view-btn-site" class="active">รายหน่วยงาน</button>
-      <button id="view-btn-owner">รายชื่อผู้รับผิดชอบ (รายบุคคล)</button>
+      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
     </div>
   </div>
 
@@ -417,6 +445,7 @@
           <th>วันที่พร้อมขึ้นระบบ</th>
           <th>ขั้นตอนการดำเนินการ</th>
           <th>สถานะล่าสุด</th>
+          <th>สถานะโอนข้อมูล</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -431,8 +460,8 @@
 <script>
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub?gid=1867606921&single=true&output=csv';
 
-const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done', OVERDUE: 'overdue' };
-const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว', overdue: 'เลยกำหนด' };
+const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done', OVERDUE: 'overdue', NOTRANSFER: 'notransfer' };
+const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว', overdue: 'เลยกำหนด', notransfer: 'ไม่โอนข้อมูล' };
 const STAGES = ['migration','transfer','verify','launch'];
 const STAGE_LABEL = { migration:'Migration', transfer:'Transfer', verify:'ตรวจสอบข้อมูล', launch:'ประกาศใช้งาน' };
 
@@ -446,6 +475,7 @@ const COLUMN_LETTER = {
   province: 'G',      // จังหวัด
   region: 'I',        // เขต
   oldProgram: 'K',     // โปรแกรมเดิม
+  transferStatus: 'N', // สถานะ (ยืนยันโอนข้อมูล / ไม่โอนข้อมูล / เปลี่ยนรอบ ฯลฯ)
   anydesk: 'W',        // Anydesk (เลข ID อ้างอิง ไม่นับสถานะ)
   migration: 'AA',     // สถานะ Migration
   transfer: 'AB',      // สถานะ Transfer
@@ -464,14 +494,14 @@ function colLetterToIndex(letters){
 
 // ตัวอย่างข้อมูลสำรอง ใช้เฉพาะตอนดึงจาก Google Sheet ไม่สำเร็จ
 const SAMPLE_DATA = [
-  { code:'10670', org:'รพ.สต.บ้านหนองบัว', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-20', anydeskId:'1956633490', migration:'done', transfer:'done', verify:'done', launch:'done' },
-  { code:'10671', org:'รพ.สต.ท่าพระ', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-22', anydeskId:'1877203451', migration:'done', transfer:'progress', verify:'pending', launch:'pending' },
-  { code:'10802', org:'รพ.สต.นาจาน', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-18', anydeskId:'1023845672', migration:'progress', verify:'pending', transfer:'pending', launch:'pending' },
-  { code:'10803', org:'รพ.สต.เขวาใหญ่', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-25', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending' },
-  { code:'21044', org:'รพ.สต.บางพลี', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1665789023', migration:'done', transfer:'done', verify:'progress', launch:'pending' },
-  { code:'21045', org:'รพ.สต.บางเสาธง', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1443298761', migration:'done', transfer:'done', verify:'done', launch:'done' },
-  { code:'30115', org:'รพ.สต.หนองปลิง', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending' },
-  { code:'30116', org:'รพ.สต.โคกกรวด', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'1789456123', migration:'progress', transfer:'pending', verify:'pending', launch:'pending' },
+  { code:'10670', org:'รพ.สต.บ้านหนองบัว', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-20', anydeskId:'1956633490', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
+  { code:'10671', org:'รพ.สต.ท่าพระ', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-22', anydeskId:'1877203451', migration:'done', transfer:'progress', verify:'pending', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
+  { code:'10802', org:'รพ.สต.นาจาน', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-18', anydeskId:'1023845672', migration:'progress', verify:'pending', transfer:'pending', launch:'pending', transferStatusKey:'ts-none', transferStatusLabel:'ไม่ระบุ' },
+  { code:'10803', org:'รพ.สต.เขวาใหญ่', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-25', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' },
+  { code:'21044', org:'รพ.สต.บางพลี', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1665789023', migration:'done', transfer:'done', verify:'progress', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
+  { code:'21045', org:'รพ.สต.บางเสาธง', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1443298761', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
+  { code:'30115', org:'รพ.สต.หนองปลิง', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' },
+  { code:'30116', org:'รพ.สต.โคกกรวด', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'1789456123', migration:'progress', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-round2', transferStatusLabel:'เปลี่ยนรอบ 2' },
 ];
 
 let DATA = [];
@@ -507,6 +537,23 @@ function normalizeStatus(value){
   return STATUS.PENDING;
 }
 
+// สถานะคอลัมน์ N ในชีท (dropdown: ยืนยันโอนข้อมูล / ไม่โอนข้อมูล / เปลี่ยนรอบ 2 / เปลี่ยนรอบ 3 / สอบถามข้อมูลเพิ่มเติม / ย้ายรอบ 3)
+// ใช้แยกกรณี "มีชื่อในระบบแต่ไม่ได้ติดตั้งจริง" ออกจากที่ยืนยันโอนข้อมูลแล้ว
+const TRANSFER_STATUS_RULES = [
+  { test: v => v.includes('ยืนยัน') && v.includes('โอน'), key: 'ts-confirm' },
+  { test: v => v.includes('ไม่โอน'), key: 'ts-notransfer' },
+  { test: v => v.includes('เปลี่ยนรอบ 2') || v.includes('เปลี่ยนรอบ2'), key: 'ts-round2' },
+  { test: v => v.includes('เปลี่ยนรอบ 3') || v.includes('เปลี่ยนรอบ3'), key: 'ts-round3' },
+  { test: v => v.includes('สอบถาม'), key: 'ts-inquiry' },
+  { test: v => v.includes('ย้ายรอบ'), key: 'ts-moved' },
+];
+function classifyTransferStatus(raw){
+  const v = (raw || '').trim();
+  if (!v) return { key: 'ts-none', label: 'ไม่ระบุ' };
+  const found = TRANSFER_STATUS_RULES.find(rule => rule.test(v));
+  return { key: found ? found.key : 'ts-other', label: v };
+}
+
 function csvRowsToData(rows){
   const idx = {};
   Object.keys(COLUMN_LETTER).forEach(key => {
@@ -514,6 +561,7 @@ function csvRowsToData(rows){
   });
   return rows.slice(1).map(r => {
     const get = key => (r[idx[key]] || '').trim();
+    const ts = classifyTransferStatus(get('transferStatus'));
     return {
       code: get('code'),
       org: get('org'),
@@ -527,6 +575,8 @@ function csvRowsToData(rows){
       transfer: normalizeStatus(get('transfer')),
       verify: normalizeStatus(get('verify')),
       launch: normalizeStatus(get('launch')),
+      transferStatusKey: ts.key,
+      transferStatusLabel: ts.label,
     };
   }).filter(r => r.code || r.org);
 }
@@ -548,6 +598,7 @@ async function loadData(){
     statusEl.textContent = 'ดึงข้อมูลจาก Google Sheet ไม่สำเร็จ (' + err.message + ') — กำลังแสดงข้อมูลตัวอย่างแทน ลองกดรีเฟรช หรือเปิดไฟล์นี้ผ่านเว็บเซิร์ฟเวอร์ท้องถิ่นแทนการเปิดไฟล์ตรงๆ';
   }
   populateFilterOptions();
+  MAX_READY_DATE = computeMaxReadyDate();
   renderKPIs(DATA);
   renderTable(DATA);
   renderOwnerView(DATA);
@@ -560,37 +611,80 @@ function overallStatus(row){
   return STATUS.PROGRESS;
 }
 
-// ----- กำหนดเสร็จ (deadline) -----
-// deadline แก้ได้ตลอดผ่านช่อง input ด้านบน ไม่ต้องแก้โค้ด — พิมพ์วันที่ใหม่แล้วระบบคำนวณสถานะ "เลยกำหนด" ให้เองทันที
-let DEADLINE_DATE = document.getElementById('deadline-input').value;
+// ตรวจสอบสถานะ ณ วันที่ (เทียบกับ "วันที่พร้อมขึ้นระบบ" คอลัมน์ D ของแต่ละหน่วยงานเอง) -----
+document.getElementById('deadline-input').value = new Date().toISOString().slice(0, 10); // ค่าเริ่มต้น = วันนี้จริง
+let REFERENCE_DATE = document.getElementById('deadline-input').value;
 
-function getDeadlineEndOfDay(){
-  return new Date(DEADLINE_DATE + 'T23:59:59');
+// แปลงค่าวันที่จากชีท รองรับได้ทั้ง YYYY-MM-DD และ DD/MM/YYYY และปีแบบ พ.ศ. (แปลงเป็น ค.ศ. อัตโนมัติถ้าปี > 2400)
+function parseSheetDate(raw){
+  if (!raw) return null;
+  const v = raw.trim();
+  let m = v.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (m){
+    let y = +m[1], mo = +m[2], d = +m[3];
+    if (y > 2400) y -= 543;
+    return new Date(y, mo - 1, d);
+  }
+  m = v.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m){
+    let d = +m[1], mo = +m[2], y = +m[3];
+    if (y > 2400) y -= 543;
+    return new Date(y, mo - 1, d);
+  }
+  return null;
 }
-function isPastDeadline(){
-  return new Date() > getDeadlineEndOfDay();
+
+// หน่วยงานนี้ "เลยกำหนดของตัวเอง" หรือยัง เทียบกับวันที่เลือกไว้ด้านบน (REFERENCE_DATE)
+// USE_ROUND_DEADLINE = true → ใช้วันที่มากสุดที่พบในคอลัมน์ D ทั้งชีท (MAX_READY_DATE) เป็นเดดไลน์เดียวรวมของรอบล่าสุด แทนวันของแต่ละแถวเอง
+let USE_ROUND_DEADLINE = false;
+let MAX_READY_DATE = null;
+
+function computeMaxReadyDate(){
+  let max = null;
+  DATA.forEach(r => {
+    const d = parseSheetDate(r.readyDate);
+    if (d && (!max || d > max)) max = d;
+  });
+  return max;
+}
+function formatDateObj(d){
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function isOverdue(row){
+  const due = USE_ROUND_DEADLINE ? MAX_READY_DATE : parseSheetDate(row.readyDate);
+  if (!due) return false; // ไม่มีวันที่ให้เทียบ ไม่สามารถระบุได้ว่าเลยกำหนด
+  const dueEndOfDay = new Date(due.getFullYear(), due.getMonth(), due.getDate(), 23, 59, 59);
+  const ref = new Date(REFERENCE_DATE + 'T23:59:59');
+  return ref > dueEndOfDay;
 }
 // สถานะที่ใช้แสดงจริง (badge หลัก / KPI / การ์ด BA) — เหมือน overallStatus ทุกประการ
-// ยกเว้นกรณี "เลยกำหนดเสร็จที่ตั้งไว้แล้วแต่ยังไม่ done" จะกลายเป็น overdue แทน
+// ยกเว้น 2 กรณี: (1) คอลัมน์ N ระบุ "ไม่โอนข้อมูล" ไว้ชัดเจนแล้ว จะขึ้นเป็น "ไม่โอนข้อมูล" แทน
+// ไม่ใช่ "เลยกำหนด" เฉยๆ (เพราะเป็นการตัดสินใจ ไม่ใช่แค่ล่าช้า) (2) เลยวันที่พร้อมขึ้นระบบของตัวเองแล้วแต่ยังไม่ done → overdue
 function displayStatus(row){
   const base = overallStatus(row);
   if (base === STATUS.DONE) return STATUS.DONE;
-  if (isPastDeadline()) return STATUS.OVERDUE;
+  if (row.transferStatusKey === 'ts-notransfer') return STATUS.NOTRANSFER;
+  if (isOverdue(row)) return STATUS.OVERDUE;
   return base;
 }
 function updateDeadlineFlag(){
   const flag = document.getElementById('deadline-flag');
-  const diffDays = Math.floor((new Date() - getDeadlineEndOfDay()) / 86400000);
-  if (diffDays > 0){
-    flag.textContent = `เลยกำหนดแล้ว ${diffDays} วัน`;
-    flag.className = 'deadline-flag over';
-  } else {
-    flag.textContent = diffDays === 0 ? 'ถึงกำหนดวันนี้' : `เหลืออีก ${Math.abs(diffDays)} วัน`;
-    flag.className = 'deadline-flag ok';
-  }
+  const overdueCount = DATA.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
+  flag.textContent = overdueCount > 0 ? `พบเลยกำหนด ${overdueCount} แห่ง` : 'ยังไม่มีที่เลยกำหนด';
+  flag.className = 'deadline-flag ' + (overdueCount > 0 ? 'over' : 'ok');
+  const maxLabel = document.getElementById('max-date-label');
+  maxLabel.textContent = MAX_READY_DATE ? `(รอบล่าสุด: ${formatDateObj(MAX_READY_DATE)})` : '';
 }
+document.getElementById('round-deadline-toggle').addEventListener('change', (e) => {
+  USE_ROUND_DEADLINE = e.target.checked;
+  updateDeadlineFlag();
+  renderKPIs(DATA);
+  applyFilters();
+});
 document.getElementById('deadline-input').addEventListener('change', (e) => {
-  DEADLINE_DATE = e.target.value || DEADLINE_DATE;
+  REFERENCE_DATE = e.target.value || REFERENCE_DATE;
   updateDeadlineFlag();
   renderKPIs(DATA);
   applyFilters();
@@ -600,10 +694,11 @@ function initials(name){
   const parts = name.trim().split(' ');
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
-function formatDate(iso){
-  const [y,m,d] = iso.split('-');
+function formatDate(raw){
+  const d = parseSheetDate(raw);
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+  if (!d) return raw || '—';
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
 function populateFilterOptions(){
@@ -612,10 +707,12 @@ function populateFilterOptions(){
   const regionSel = document.getElementById('f-region');
   const provinceSel = document.getElementById('f-province');
   const ownerSel = document.getElementById('f-owner');
-  const prevRegion = regionSel.value, prevProvince = provinceSel.value, prevOwner = ownerSel.value;
+  const transferSel = document.getElementById('f-transfer');
+  const prevRegion = regionSel.value, prevProvince = provinceSel.value, prevOwner = ownerSel.value, prevTransfer = transferSel.value;
   regionSel.innerHTML = '<option value="">ทุกเขต</option>';
   provinceSel.innerHTML = '<option value="">ทุกจังหวัด</option>';
   ownerSel.innerHTML = '<option value="">ทุกผู้รับผิดชอบ</option>';
+  transferSel.innerHTML = '<option value="">ทุกสถานะโอนข้อมูล</option>';
   regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; regionSel.appendChild(o); });
   provinces.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; provinceSel.appendChild(o); });
 
@@ -628,7 +725,16 @@ function populateFilterOptions(){
     ownerSel.appendChild(o);
   });
 
-  regionSel.value = prevRegion; provinceSel.value = prevProvince; ownerSel.value = prevOwner;
+  const transferCounts = {};
+  DATA.forEach(r => { const l = r.transferStatusLabel || 'ไม่ระบุ'; transferCounts[l] = (transferCounts[l] || 0) + 1; });
+  Object.keys(transferCounts).sort((a,b) => a.localeCompare(b, 'th')).forEach(label => {
+    const o = document.createElement('option');
+    o.value = label;
+    o.textContent = `${label} (${transferCounts[label]} แห่ง)`;
+    transferSel.appendChild(o);
+  });
+
+  regionSel.value = prevRegion; provinceSel.value = prevProvince; ownerSel.value = prevOwner; transferSel.value = prevTransfer;
 }
 
 function renderKPIs(rows){
@@ -637,6 +743,7 @@ function renderKPIs(rows){
   const progress = rows.filter(r => displayStatus(r) === STATUS.PROGRESS).length;
   const pending = rows.filter(r => displayStatus(r) === STATUS.PENDING).length;
   const overdue = rows.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
+  const notransfer = rows.filter(r => r.transferStatusKey === 'ts-notransfer').length;
   const totalSteps = total * STAGES.length;
   const doneSteps = rows.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
   const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
@@ -648,6 +755,7 @@ function renderKPIs(rows){
   document.getElementById('kpi-percent').textContent = percent + '%';
   document.getElementById('kpi-bar').style.width = percent + '%';
   document.getElementById('kpi-overdue').textContent = overdue;
+  document.getElementById('kpi-notransfer').textContent = notransfer;
   updateDeadlineFlag();
 }
 
@@ -683,6 +791,7 @@ function renderTable(rows){
         </div>
       </td>
       <td><span class="badge ${st}"><span class="dot"></span>${STATUS_LABEL[st]}</span></td>
+      <td><span class="badge ${row.transferStatusKey}">${row.transferStatusLabel}</span></td>
     `;
     body.appendChild(tr);
   });
@@ -700,10 +809,10 @@ function renderOwnerView(rows){
   });
 
   const names = Object.keys(owners).sort((a,b) => {
-    // เรียงคนที่มีงาน "เลยกำหนด" ก่อน แล้วตามด้วยคนที่มีงานค้าง (pending) เยอะสุด
-    const ov = owners[b].filter(r => displayStatus(r) === STATUS.OVERDUE).length
-             - owners[a].filter(r => displayStatus(r) === STATUS.OVERDUE).length;
-    if (ov !== 0) return ov;
+    // เรียงคนที่มีงาน "เลยกำหนด" หรือ "ไม่โอนข้อมูล" ก่อน แล้วตามด้วยคนที่มีงานค้าง (pending) เยอะสุด
+    const flagCount = list => list.filter(r => displayStatus(r) === STATUS.OVERDUE || displayStatus(r) === STATUS.NOTRANSFER).length;
+    const flagDiff = flagCount(owners[b]) - flagCount(owners[a]);
+    if (flagDiff !== 0) return flagDiff;
     const pendingA = owners[a].filter(r => displayStatus(r) === STATUS.PENDING).length;
     const pendingB = owners[b].filter(r => displayStatus(r) === STATUS.PENDING).length;
     if (pendingB !== pendingA) return pendingB - pendingA;
@@ -722,13 +831,14 @@ function renderOwnerView(rows){
     const progress = list.filter(r => displayStatus(r) === STATUS.PROGRESS).length;
     const pending = list.filter(r => displayStatus(r) === STATUS.PENDING).length;
     const overdue = list.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
+    const notransfer = list.filter(r => displayStatus(r) === STATUS.NOTRANSFER).length;
     // % = อัตราความสำเร็จ นับเฉพาะหน่วยงานที่ "เสร็จแล้ว" เทียบกับทั้งหมดที่รับผิดชอบ
     // (จับความสำเร็จในการทำให้เสร็จก่อน/ทันกำหนดเสร็จที่ตั้งไว้ด้านบน)
     const percent = total ? Math.round((done / total) * 100) : 0;
-    const percentColor = overdue > 0 ? 'var(--overdue-text)' : (percent === 100 ? 'var(--done-text)' : 'var(--accent)');
+    const percentColor = (overdue > 0 || notransfer > 0) ? 'var(--overdue-text)' : (percent === 100 ? 'var(--done-text)' : 'var(--accent)');
 
     const card = document.createElement('div');
-    card.className = 'owner-card' + (overdue > 0 ? ' overdue-alert' : (pending > 0 && done === 0 ? ' needs-attention' : ''));
+    card.className = 'owner-card' + ((overdue > 0 || notransfer > 0) ? ' overdue-alert' : (pending > 0 && done === 0 ? ' needs-attention' : ''));
     card.innerHTML = `
       <div class="owner-card-head">
         <span class="avatar">${initials(name)}</span>
@@ -738,17 +848,19 @@ function renderOwnerView(rows){
         </div>
         <span class="owner-percent" style="color:${percentColor}">${percent}%</span>
       </div>
-      <div class="owner-stackbar" title="เสร็จแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending} / เลยกำหนด ${overdue}">
+      <div class="owner-stackbar" title="เสร็จแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending} / เลยกำหนด ${overdue} / ไม่โอนข้อมูล ${notransfer}">
         ${done ? `<div class="seg done" style="flex:${done}"></div>` : ''}
         ${progress ? `<div class="seg progress" style="flex:${progress}"></div>` : ''}
         ${pending ? `<div class="seg pending" style="flex:${pending}"></div>` : ''}
         ${overdue ? `<div class="seg overdue" style="flex:${overdue}"></div>` : ''}
+        ${notransfer ? `<div class="seg notransfer" style="flex:${notransfer}"></div>` : ''}
       </div>
       <div class="owner-stats">
         <span class="owner-stat"><span class="dot done"></span>เสร็จแล้ว <b>${done}</b></span>
         <span class="owner-stat"><span class="dot progress"></span>กำลังทำ <b>${progress}</b></span>
         <span class="owner-stat"><span class="dot pending"></span>ยังไม่เริ่ม <b>${pending}</b></span>
         ${overdue ? `<span class="owner-stat"><span class="dot overdue"></span>เลยกำหนด <b>${overdue}</b></span>` : ''}
+        ${notransfer ? `<span class="owner-stat"><span class="dot notransfer"></span>ไม่โอนข้อมูล <b>${notransfer}</b></span>` : ''}
       </div>
     `;
     grid.appendChild(card);
@@ -771,6 +883,7 @@ function applyFilters(){
   const province = document.getElementById('f-province').value;
   const owner = document.getElementById('f-owner').value;
   const status = document.getElementById('f-status').value;
+  const transfer = document.getElementById('f-transfer').value;
   const search = document.getElementById('f-search').value.trim().toLowerCase();
 
   const filtered = DATA.filter(row => {
@@ -778,6 +891,7 @@ function applyFilters(){
     if (province && row.province !== province) return false;
     if (owner && row.owner !== owner) return false;
     if (status && displayStatus(row) !== status) return false;
+    if (transfer && row.transferStatusLabel !== transfer) return false;
     if (search){
       const hay = (row.code + ' ' + row.org + ' ' + row.owner).toLowerCase();
       if (!hay.includes(search)) return false;
@@ -788,13 +902,14 @@ function applyFilters(){
   renderOwnerView(filtered);
 }
 
-['f-region','f-province','f-owner','f-status'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+['f-region','f-province','f-owner','f-status','f-transfer'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
 document.getElementById('f-search').addEventListener('input', applyFilters);
 document.getElementById('f-reset').addEventListener('click', () => {
   document.getElementById('f-region').value = '';
   document.getElementById('f-province').value = '';
   document.getElementById('f-owner').value = '';
   document.getElementById('f-status').value = '';
+  document.getElementById('f-transfer').value = '';
   document.getElementById('f-search').value = '';
   applyFilters();
 });
