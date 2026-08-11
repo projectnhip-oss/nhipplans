@@ -271,6 +271,10 @@
   .badge.ts-round2, .badge.ts-round3, .badge.ts-moved{ background: #FCE9D6; color: #A15116; }
   .badge.ts-inquiry{ background: #EDE7F6; color: #5B3E96; }
   .badge.ts-none, .badge.ts-other{ background: var(--surface-muted); color: var(--text-muted); }
+  .badge.us-active{ background: var(--done-bg); color: var(--done-text); }
+  .badge.us-inactive{ background: var(--overdue-bg); color: var(--overdue-text); }
+  .badge.us-partial{ background: #FCE9D6; color: #A15116; }
+  .badge.us-none, .badge.us-other{ background: var(--surface-muted); color: var(--text-muted); }
 
   .dot.overdue{ background: var(--overdue-dot); }
   .dot.notransfer{ background: var(--overdue-dot); border: 1px solid var(--overdue-text); }
@@ -384,6 +388,10 @@
       <p class="label">ไม่โอนข้อมูล</p>
       <p class="value" id="kpi-notransfer">0</p>
     </div>
+    <div class="kpi danger">
+      <p class="label">ขึ้นระบบแล้วแต่ไม่ใช้งาน</p>
+      <p class="value" id="kpi-unused">0</p>
+    </div>
   </div>
 
   <div class="filters">
@@ -407,6 +415,13 @@
       <option value="notransfer">ไม่โอนข้อมูล</option>
     </select>
     <select id="f-transfer"><option value="">ทุกสถานะโอนข้อมูล</option></select>
+    <select id="f-usage">
+      <option value="">ทุกสถานะการใช้งาน</option>
+      <option value="ใช้งาน">ใช้งาน</option>
+      <option value="ไม่ใช้งาน">ไม่ใช้งาน</option>
+      <option value="ใช้งานบางวัน">ใช้งานบางวัน</option>
+      <option value="ไม่ระบุ">ไม่ระบุ</option>
+    </select>
     <div class="deadline-box">
       <span>วันที่พร้อมขึ้นระบบ:</span>
       <input type="date" id="f-date-from" title="ตั้งแต่วันที่">
@@ -429,7 +444,7 @@
     </div>
     <div class="view-toggle">
       <button id="view-btn-site" class="active">รายหน่วยงาน</button>
-      <button id="view-btn-owner">รายชื่อผู้รับผิดชอบ (รายบุคคล)</button>
+      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
     </div>
   </div>
 
@@ -452,6 +467,7 @@
           <th>ขั้นตอนการดำเนินการ</th>
           <th>สถานะล่าสุด</th>
           <th>สถานะโอนข้อมูล</th>
+          <th>ใช้งานหลังขึ้นระบบ</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -487,6 +503,7 @@ const COLUMN_LETTER = {
   transfer: 'AB',      // สถานะ Transfer
   verify: 'AC',        // ตรวจสอบข้อมูล
   launch: 'AD',        // ประกาศใช้งาน
+  usageStatus: 'AF',   // ขึ้นระบบแล้วไม่ใช้งาน (ใช้งาน / ไม่ใช้งาน / ใช้งานบางวัน)
 };
 
 // แปลงตัวอักษรคอลัมน์ (A, B, ... Z, AA, AB, ...) เป็นตำแหน่ง index แบบ 0-based
@@ -500,14 +517,14 @@ function colLetterToIndex(letters){
 
 // ตัวอย่างข้อมูลสำรอง ใช้เฉพาะตอนดึงจาก Google Sheet ไม่สำเร็จ
 const SAMPLE_DATA = [
-  { code:'10670', org:'รพ.สต.บ้านหนองบัว', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-20', anydeskId:'1956633490', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
-  { code:'10671', org:'รพ.สต.ท่าพระ', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-22', anydeskId:'1877203451', migration:'done', transfer:'progress', verify:'pending', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
-  { code:'10802', org:'รพ.สต.นาจาน', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-18', anydeskId:'1023845672', migration:'progress', verify:'pending', transfer:'pending', launch:'pending', transferStatusKey:'ts-none', transferStatusLabel:'ไม่ระบุ' },
-  { code:'10803', org:'รพ.สต.เขวาใหญ่', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-25', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' },
-  { code:'21044', org:'รพ.สต.บางพลี', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1665789023', migration:'done', transfer:'done', verify:'progress', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
-  { code:'21045', org:'รพ.สต.บางเสาธง', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1443298761', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' },
-  { code:'30115', org:'รพ.สต.หนองปลิง', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' },
-  { code:'30116', org:'รพ.สต.โคกกรวด', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'1789456123', migration:'progress', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-round2', transferStatusLabel:'เปลี่ยนรอบ 2' },
+  { code:'10670', org:'รพ.สต.บ้านหนองบัว', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-20', anydeskId:'1956633490', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' , usageStatusKey:'us-active', usageStatusLabel:'ใช้งาน' },
+  { code:'10671', org:'รพ.สต.ท่าพระ', province:'ขอนแก่น', region:'เขต 7', oldProgram:'HOSxP', owner:'สมชาย ใจดี', readyDate:'2569-08-22', anydeskId:'1877203451', migration:'done', transfer:'progress', verify:'pending', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' , usageStatusKey:'us-active', usageStatusLabel:'ใช้งาน' },
+  { code:'10802', org:'รพ.สต.นาจาน', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-18', anydeskId:'1023845672', migration:'progress', verify:'pending', transfer:'pending', launch:'pending', transferStatusKey:'ts-none', transferStatusLabel:'ไม่ระบุ' , usageStatusKey:'us-partial', usageStatusLabel:'ใช้งานบางวัน' },
+  { code:'10803', org:'รพ.สต.เขวาใหญ่', province:'มหาสารคาม', region:'เขต 7', oldProgram:'JHCIS', owner:'พรทิพย์ วงศ์สุข', readyDate:'2569-08-25', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' , usageStatusKey:'us-inactive', usageStatusLabel:'ไม่ใช้งาน' },
+  { code:'21044', org:'รพ.สต.บางพลี', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1665789023', migration:'done', transfer:'done', verify:'progress', launch:'pending', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' , usageStatusKey:'us-active', usageStatusLabel:'ใช้งาน' },
+  { code:'21045', org:'รพ.สต.บางเสาธง', province:'สมุทรปราการ', region:'เขต 6', oldProgram:'HOSxP', owner:'อรุณี ศรีสุข', readyDate:'2569-09-01', anydeskId:'1443298761', migration:'done', transfer:'done', verify:'done', launch:'done', transferStatusKey:'ts-confirm', transferStatusLabel:'ยืนยันโอนข้อมูล' , usageStatusKey:'us-active', usageStatusLabel:'ใช้งาน' },
+  { code:'30115', org:'รพ.สต.หนองปลิง', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'', migration:'pending', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-notransfer', transferStatusLabel:'ไม่โอนข้อมูล' , usageStatusKey:'us-none', usageStatusLabel:'ไม่ระบุ' },
+  { code:'30116', org:'รพ.สต.โคกกรวด', province:'นครราชสีมา', region:'เขต 9', oldProgram:'HOSxP_PCU', owner:'วิชัย รุ่งเรือง', readyDate:'2569-08-30', anydeskId:'1789456123', migration:'progress', transfer:'pending', verify:'pending', launch:'pending', transferStatusKey:'ts-round2', transferStatusLabel:'เปลี่ยนรอบ 2' , usageStatusKey:'us-partial', usageStatusLabel:'ใช้งานบางวัน' },
 ];
 
 let DATA = [];
@@ -560,6 +577,16 @@ function classifyTransferStatus(raw){
   return { key: found ? found.key : 'ts-other', label: v };
 }
 
+// สถานะคอลัมน์ AF: ขึ้นระบบแล้วไม่ใช้งาน (dropdown: ใช้งาน / ไม่ใช้งาน / ใช้งานบางวัน)
+function classifyUsageStatus(raw){
+  const v = (raw || '').trim();
+  if (!v) return { key: 'us-none', label: 'ไม่ระบุ' };
+  if (v.includes('ไม่ใช้งาน')) return { key: 'us-inactive', label: 'ไม่ใช้งาน' };
+  if (v.includes('บางวัน')) return { key: 'us-partial', label: 'ใช้งานบางวัน' };
+  if (v.includes('ใช้งาน')) return { key: 'us-active', label: 'ใช้งาน' };
+  return { key: 'us-other', label: v };
+}
+
 function csvRowsToData(rows){
   const idx = {};
   Object.keys(COLUMN_LETTER).forEach(key => {
@@ -568,6 +595,7 @@ function csvRowsToData(rows){
   return rows.slice(1).map(r => {
     const get = key => (r[idx[key]] || '').trim();
     const ts = classifyTransferStatus(get('transferStatus'));
+    const us = classifyUsageStatus(get('usageStatus'));
     return {
       code: get('code'),
       org: get('org'),
@@ -583,6 +611,8 @@ function csvRowsToData(rows){
       launch: normalizeStatus(get('launch')),
       transferStatusKey: ts.key,
       transferStatusLabel: ts.label,
+      usageStatusKey: us.key,
+      usageStatusLabel: us.label,
     };
   }).filter(r => r.code || r.org);
 }
@@ -770,6 +800,7 @@ function renderKPIs(rows){
   const pending = rows.filter(r => displayStatus(r) === STATUS.PENDING).length;
   const overdue = rows.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
   const notransfer = rows.filter(r => r.transferStatusKey === 'ts-notransfer').length;
+  const unused = rows.filter(r => r.usageStatusKey === 'us-inactive').length;
   const totalSteps = total * STAGES.length;
   const doneSteps = rows.reduce((sum, r) => sum + STAGES.filter(s => r[s] === 'done').length, 0);
   const percent = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
@@ -782,6 +813,7 @@ function renderKPIs(rows){
   document.getElementById('kpi-bar').style.width = percent + '%';
   document.getElementById('kpi-overdue').textContent = overdue;
   document.getElementById('kpi-notransfer').textContent = notransfer;
+  document.getElementById('kpi-unused').textContent = unused;
   updateDeadlineFlag();
 }
 
@@ -818,6 +850,7 @@ function renderTable(rows){
       </td>
       <td><span class="badge ${st}"><span class="dot"></span>${STATUS_LABEL[st]}</span></td>
       <td><span class="badge ${row.transferStatusKey}">${row.transferStatusLabel}</span></td>
+      <td><span class="badge ${row.usageStatusKey}">${row.usageStatusLabel}</span></td>
     `;
     body.appendChild(tr);
   });
@@ -910,6 +943,7 @@ function applyFilters(){
   const owner = document.getElementById('f-owner').value;
   const status = document.getElementById('f-status').value;
   const transfer = document.getElementById('f-transfer').value;
+  const usage = document.getElementById('f-usage').value;
   const dateFrom = document.getElementById('f-date-from').value;
   const dateTo = document.getElementById('f-date-to').value;
   const search = document.getElementById('f-search').value.trim().toLowerCase();
@@ -920,6 +954,7 @@ function applyFilters(){
     if (owner && row.owner !== owner) return false;
     if (status && displayStatus(row) !== status) return false;
     if (transfer && row.transferStatusLabel !== transfer) return false;
+    if (usage && row.usageStatusLabel !== usage) return false;
     if (dateFrom || dateTo){
       const d = parseSheetDate(row.readyDate);
       if (!d) return false; // ไม่มีวันที่ให้เทียบ ตัดออกเมื่อเปิดตัวกรองวันที่
@@ -937,7 +972,7 @@ function applyFilters(){
   renderOwnerView(filtered);
 }
 
-['f-region','f-province','f-owner','f-status','f-transfer','f-date-from','f-date-to'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+['f-region','f-province','f-owner','f-status','f-transfer','f-usage','f-date-from','f-date-to'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
 document.getElementById('f-search').addEventListener('input', applyFilters);
 document.getElementById('f-reset').addEventListener('click', () => {
   document.getElementById('f-region').value = '';
@@ -945,6 +980,7 @@ document.getElementById('f-reset').addEventListener('click', () => {
   document.getElementById('f-owner').value = '';
   document.getElementById('f-status').value = '';
   document.getElementById('f-transfer').value = '';
+  document.getElementById('f-usage').value = '';
   document.getElementById('f-date-from').value = '';
   document.getElementById('f-date-to').value = '';
   document.getElementById('f-search').value = '';
