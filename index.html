@@ -204,6 +204,7 @@
     border-radius: 12px;
     overflow: hidden;
   }
+  .table-scroll{ overflow-x: auto; }
   table{ width: 100%; border-collapse: collapse; font-size: 13.5px; }
   thead th{
     text-align: left;
@@ -453,25 +454,27 @@
   </div>
 
   <div class="table-card" id="site-view">
-    <table>
-      <thead>
-        <tr>
-          <th>รหัสสถานพยาบาล</th>
-          <th>ชื่อหน่วยงาน</th>
-          <th>จังหวัด</th>
-          <th>เขต</th>
-          <th>โปรแกรมเดิม</th>
-          <th>Anydesk ID</th>
-          <th>ผู้รับผิดชอบ</th>
-          <th>วันที่พร้อมขึ้นระบบ</th>
-          <th>ขั้นตอนการดำเนินการ</th>
-          <th>สถานะล่าสุด</th>
-          <th>สถานะโอนข้อมูล</th>
-          <th>ใช้งานหลังขึ้นระบบ</th>
-        </tr>
-      </thead>
-      <tbody id="table-body"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>รหัสสถานพยาบาล</th>
+            <th>ชื่อหน่วยงาน</th>
+            <th>จังหวัด</th>
+            <th>เขต</th>
+            <th>โปรแกรมเดิม</th>
+            <th>Anydesk ID</th>
+            <th>ผู้รับผิดชอบ</th>
+            <th>วันที่พร้อมขึ้นระบบ</th>
+            <th>ขั้นตอนการดำเนินการ</th>
+            <th>สถานะล่าสุด</th>
+            <th>สถานะโอนข้อมูล</th>
+            <th>ใช้งานหลังขึ้นระบบ</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
     <div class="empty" id="empty-state" style="display:none;">ไม่พบข้อมูลที่ตรงกับตัวกรอง</div>
   </div><!-- /#site-view -->
 
@@ -750,6 +753,11 @@ function initials(name){
   const parts = name.trim().split(' ');
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
+// ย่อ "โรงพยาบาลส่งเสริมสุขภาพตำบล..." ให้เหลือ "รพ.สต. ..." เพื่อให้คอลัมน์ชื่อหน่วยงานไม่กว้างเกินไป
+function shortenOrgName(name){
+  const v = (name || '').trim();
+  return v.replace(/^โรงพยาบาลส่งเสริมสุขภาพตำบล\s*/, 'รพ.สต.');
+}
 function formatDate(raw){
   const d = parseSheetDate(raw);
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -831,7 +839,7 @@ function renderTable(rows){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="code">${row.code}</td>
-      <td class="org">${row.org}</td>
+      <td class="org">${shortenOrgName(row.org)}</td>
       <td>${row.province}</td>
       <td><span class="region-tag">${row.region}</span></td>
       <td>${row.oldProgram}</td>
@@ -963,7 +971,7 @@ function applyFilters(){
       if (dateTo && dTime > new Date(dateTo + 'T00:00:00').getTime()) return false;
     }
     if (search){
-      const hay = (row.code + ' ' + row.org + ' ' + row.owner).toLowerCase();
+      const hay = (row.code + ' ' + row.org + ' ' + shortenOrgName(row.org) + ' ' + row.owner).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
