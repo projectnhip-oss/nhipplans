@@ -36,6 +36,10 @@
     --overdue-bg: #FBE8E7;
     --overdue-text: #B23B30;
     --overdue-dot: #D6493C;
+
+    --neutral-bg: #EDEFF1;
+    --neutral-text: #5B6670;
+    --neutral-dot: #9AA3AC;
   }
   *{ box-sizing: border-box; }
   body{
@@ -118,6 +122,8 @@
   .kpi.accent .value{ color: var(--accent); }
   .kpi.danger{ border-color: var(--overdue-dot); background: var(--overdue-bg); }
   .kpi.danger .value{ color: var(--overdue-text); }
+  .kpi.neutral{ border-color: var(--neutral-dot); background: var(--neutral-bg); }
+  .kpi.neutral .value{ color: var(--neutral-text); }
   .kpi .bar{
     height: 5px;
     border-radius: 4px;
@@ -265,10 +271,10 @@
   .badge.progress{ background: var(--progress-bg); color: var(--progress-text); }
   .badge.done{ background: var(--done-bg); color: var(--done-text); }
   .badge.overdue{ background: var(--overdue-bg); color: var(--overdue-text); }
-  .badge.notransfer{ background: var(--overdue-bg); color: var(--overdue-text); border: 1px solid var(--overdue-dot); }
+  .badge.notransfer{ background: var(--neutral-bg); color: var(--neutral-text); border: 1px solid var(--neutral-dot); }
 
   .badge.ts-confirm{ background: var(--done-bg); color: var(--done-text); }
-  .badge.ts-notransfer{ background: var(--overdue-bg); color: var(--overdue-text); }
+  .badge.ts-notransfer{ background: var(--neutral-bg); color: var(--neutral-text); }
   .badge.ts-round2, .badge.ts-round3, .badge.ts-moved{ background: #FCE9D6; color: #A15116; }
   .badge.ts-inquiry{ background: #EDE7F6; color: #5B3E96; }
   .badge.ts-none, .badge.ts-other{ background: var(--surface-muted); color: var(--text-muted); }
@@ -278,7 +284,7 @@
   .badge.us-none, .badge.us-other{ background: var(--surface-muted); color: var(--text-muted); }
 
   .dot.overdue{ background: var(--overdue-dot); }
-  .dot.notransfer{ background: var(--overdue-dot); border: 1px solid var(--overdue-text); }
+  .dot.notransfer{ background: var(--neutral-dot); }
 
   .empty{
     text-align:center; padding: 48px 20px; color: var(--text-muted); font-size: 14px;
@@ -334,12 +340,21 @@
   .owner-stackbar .seg.progress{ background: var(--progress-dot); }
   .owner-stackbar .seg.pending{ background: var(--pending-bg); }
   .owner-stackbar .seg.overdue{ background: var(--overdue-dot); }
-  .owner-stackbar .seg.notransfer{ background: var(--overdue-dot); opacity: 0.7; }
+  .owner-stackbar .seg.notransfer{ background: var(--neutral-dot); }
   .owner-stats{ display:flex; gap: 14px; flex-wrap: wrap; }
   .owner-stat{ font-size: 12.5px; color: var(--text-secondary); display:flex; align-items:center; gap:5px; }
   .owner-stat .dot{ width:7px; height:7px; border-radius:50%; }
   .owner-stat b{ color: var(--text-primary); font-weight:600; }
-  .owner-percent{ margin-left:auto; font-family:'Kanit',sans-serif; font-weight:600; font-size:15px; }
+  .owner-percent{ margin-left:auto; text-align:right; }
+  .owner-percent .pct-value{ font-family:'Kanit',sans-serif; font-weight:600; font-size:15px; line-height:1.1; display:block; }
+  .owner-percent .pct-label{ font-size: 10px; color: var(--text-muted); font-weight:500; white-space:nowrap; }
+  .owner-usage-rate{
+    font-size: 12px; color: var(--text-secondary);
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);
+    display:flex; align-items:center; gap: 6px;
+  }
+  .owner-usage-rate b{ color: var(--text-primary); font-weight:600; }
+  .owner-usage-rate.has-issue b{ color: var(--overdue-text); }
 
   @media (max-width: 1000px){
     .kpi-grid{ grid-template-columns: repeat(2,1fr); }
@@ -385,12 +400,12 @@
       <p class="label">เลยกำหนดแล้ว</p>
       <p class="value" id="kpi-overdue">0</p>
     </div>
-    <div class="kpi danger">
+    <div class="kpi neutral">
       <p class="label">ไม่โอนข้อมูล</p>
       <p class="value" id="kpi-notransfer">0</p>
     </div>
     <div class="kpi danger">
-      <p class="label">ขึ้นระบบแล้วแต่ไม่ใช้งาน</p>
+      <p class="label">ประกาศใช้งานแล้ว แต่ไม่ได้ใช้งานจริง</p>
       <p class="value" id="kpi-unused">0</p>
     </div>
   </div>
@@ -408,7 +423,7 @@
     <select id="f-region"><option value="">ทุกเขต</option></select>
     <select id="f-province"><option value="">ทุกจังหวัด</option></select>
     <select id="f-owner"><option value="">ทุกผู้รับผิดชอบ</option></select>
-    <select id="f-status"><option value="">ทุกสถานะรวม</option>
+    <select id="f-status"><option value="">ทุกสถานะความคืบหน้า</option>
       <option value="done">ดำเนินการแล้วครบ</option>
       <option value="progress">กำลังดำเนินการ</option>
       <option value="pending">ยังไม่เริ่ม</option>
@@ -417,7 +432,7 @@
     </select>
     <select id="f-transfer"><option value="">ทุกสถานะโอนข้อมูล</option></select>
     <select id="f-usage">
-      <option value="">ทุกสถานะการใช้งาน</option>
+      <option value="">ทุกสถานะใช้งานหลังขึ้นระบบ</option>
       <option value="ใช้งาน">ใช้งาน</option>
       <option value="ไม่ใช้งาน">ไม่ใช้งาน</option>
       <option value="ใช้งานบางวัน">ใช้งานบางวัน</option>
@@ -876,8 +891,8 @@ function renderOwnerView(rows){
   });
 
   const names = Object.keys(owners).sort((a,b) => {
-    // เรียงคนที่มีงาน "เลยกำหนด" หรือ "ไม่โอนข้อมูล" ก่อน แล้วตามด้วยคนที่มีงานค้าง (pending) เยอะสุด
-    const flagCount = list => list.filter(r => displayStatus(r) === STATUS.OVERDUE || displayStatus(r) === STATUS.NOTRANSFER).length;
+    // เรียงคนที่มีงาน "เลยกำหนด" / "ไม่โอนข้อมูล" / "ขึ้นระบบแล้วไม่ใช้งาน" ก่อน แล้วตามด้วยคนที่มีงานค้าง (pending) เยอะสุด
+    const flagCount = list => list.filter(r => displayStatus(r) === STATUS.OVERDUE || displayStatus(r) === STATUS.NOTRANSFER || r.usageStatusKey === 'us-inactive').length;
     const flagDiff = flagCount(owners[b]) - flagCount(owners[a]);
     if (flagDiff !== 0) return flagDiff;
     const pendingA = owners[a].filter(r => displayStatus(r) === STATUS.PENDING).length;
@@ -899,21 +914,33 @@ function renderOwnerView(rows){
     const pending = list.filter(r => displayStatus(r) === STATUS.PENDING).length;
     const overdue = list.filter(r => displayStatus(r) === STATUS.OVERDUE).length;
     const notransfer = list.filter(r => displayStatus(r) === STATUS.NOTRANSFER).length;
-    // % = อัตราความสำเร็จ นับเฉพาะหน่วยงานที่ "เสร็จแล้ว" เทียบกับทั้งหมดที่รับผิดชอบ
-    // (จับความสำเร็จในการทำให้เสร็จก่อน/ทันกำหนดเสร็จที่ตั้งไว้ด้านบน)
-    const percent = total ? Math.round((done / total) * 100) : 0;
-    const percentColor = (overdue > 0 || notransfer > 0) ? 'var(--overdue-text)' : (percent === 100 ? 'var(--done-text)' : 'var(--accent)');
+    // นับแยกต่างหาก: "ประกาศใช้งานแล้วแต่ไม่ได้ใช้งานจริง" อิงจากคอลัมน์ AF (usageStatus)
+    // เคสนี้ปกติจะถูกนับรวมอยู่ใน "เสร็จแล้ว" ด้วย (เพราะทำครบทุกขั้นตอนแล้ว) จึงต้องโชว์แยกไว้ ไม่ใช่ segment ในแถบสรุป
+    const unused = list.filter(r => r.usageStatusKey === 'us-inactive').length;
+    // แนวทาง A: แยก 2 ตัวเลขให้ชัดว่าวัดคนละเรื่องกัน ไม่ปนกัน
+    // 1) % ทำครบขั้นตอน = เสร็จแล้ว / (ทั้งหมด - ไม่โอนข้อมูล)
+    // ตัด "ไม่โอนข้อมูล" ออกจากตัวหาร เพราะเป็นเคสที่ผู้รับผิดชอบทำต่อให้เสร็จเองไม่ได้ (ไม่ใช่งานค้างที่ยังไม่ได้ทำ)
+    // ถ้าเอาไปหารรวมกับตัวหารปกติ จะทำให้คนที่บังเอิญเจอเคสนี้เยอะ ดู % ต่ำกว่าความเป็นจริงอย่างไม่เป็นธรรม
+    const workable = total - notransfer;
+    const percent = workable ? Math.round((done / workable) * 100) : (total ? 100 : 0);
+    const percentColor = (overdue > 0 || unused > 0) ? 'var(--overdue-text)' : (percent === 100 ? 'var(--done-text)' : 'var(--accent)');
+    // 2) อัตราใช้งานจริง = ในบรรดาที่ "เสร็จแล้ว" มีกี่ที่ที่ใช้งานจริง (ไม่ถูกตีว่า "ไม่ใช้งาน" ในคอลัมน์ AF)
+    const usedAmongDone = done - unused;
+    const hasUsageIssue = done > 0 && unused > 0;
 
     const card = document.createElement('div');
-    card.className = 'owner-card' + ((overdue > 0 || notransfer > 0) ? ' overdue-alert' : (pending > 0 && done === 0 ? ' needs-attention' : ''));
+    card.className = 'owner-card' + ((overdue > 0 || unused > 0) ? ' overdue-alert' : (pending > 0 && done === 0 ? ' needs-attention' : ''));
     card.innerHTML = `
       <div class="owner-card-head">
         <span class="avatar">${initials(name)}</span>
         <div>
           <div class="owner-card-name">${name}</div>
-          <div class="owner-card-count">รับผิดชอบ ${total} หน่วยงาน</div>
+          <div class="owner-card-count">รับผิดชอบ ${total} หน่วยงาน${notransfer ? ` (โอนข้อมูล ${workable})` : ''}</div>
         </div>
-        <span class="owner-percent" style="color:${percentColor}">${percent}%</span>
+        <span class="owner-percent" style="color:${percentColor}" title="${done} เสร็จแล้ว จาก ${workable} โอนข้อมูล (ตัด ${notransfer} ที่ไม่โอนข้อมูลออกจากตัวหาร)">
+          <span class="pct-value">${percent}%</span>
+          <span class="pct-label">ทำครบขั้นตอน</span>
+        </span>
       </div>
       <div class="owner-stackbar" title="เสร็จแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending} / เลยกำหนด ${overdue} / ไม่โอนข้อมูล ${notransfer}">
         ${done ? `<div class="seg done" style="flex:${done}"></div>` : ''}
@@ -929,6 +956,7 @@ function renderOwnerView(rows){
         ${overdue ? `<span class="owner-stat"><span class="dot overdue"></span>เลยกำหนด <b>${overdue}</b></span>` : ''}
         ${notransfer ? `<span class="owner-stat"><span class="dot notransfer"></span>ไม่โอนข้อมูล <b>${notransfer}</b></span>` : ''}
       </div>
+      ${done ? `<div class="owner-usage-rate${hasUsageIssue ? ' has-issue' : ''}">ในจำนวนที่เสร็จแล้ว ใช้งานจริง <b>${usedAmongDone}/${done}</b> ที่${hasUsageIssue ? ` <span style="color:var(--overdue-text)">(ไม่ใช้งาน ${unused})</span>` : ''}</div>` : ''}
     `;
     grid.appendChild(card);
   });
