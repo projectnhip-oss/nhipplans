@@ -8,10 +8,8 @@
 // gid เป็น null = ยังไม่ได้ตั้งค่า ปุ่มจะเป็นสีเทากดไม่ได้
 const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub';
 const SHEETS = [
-  { id: 'round1',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 1', gid: null },
-  { id: 'round2',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 2', gid: null },
   { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
-  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครุ ก) 102 แห่ง',  gid: '2025024087', columns: {} },
+  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087', columns: {} },
 ];
 const DEFAULT_SHEET_ID = 'round3';
 
