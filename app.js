@@ -1,4 +1,33 @@
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub?gid=1867606921&single=true&output=csv';
+// ===== รายการชีท (แท็บ) ใน Google Sheet ไฟล์เดียวกัน =====
+// เพิ่มรอบ/ชีทใหม่: เติมบรรทัดใน SHEETS ด้านล่าง
+//   id      = ชื่อสั้นๆ ภาษาอังกฤษ ใช้ใน URL (?sheet=id)
+//   label   = ชื่อที่แสดงบนปุ่มแท็บ
+//   gid     = เลข gid ของแท็บนั้น (ดูได้จาก URL ตอนเปิดแท็บในชีท: ...#gid=123456789)
+//   url     = (ไม่บังคับ) ลิงก์ CSV เต็มของแท็บนั้น ถ้าอยากวางลิงก์เองแทนการประกอบจาก gid
+//   columns = (ไม่บังคับ) ถ้าแท็บนี้เรียงคอลัมน์ไม่เหมือนค่าเริ่มต้น ให้ระบุเฉพาะตัวที่ต่าง เช่น { owner: 'B' }
+// gid เป็น null = ยังไม่ได้ตั้งค่า ปุ่มจะเป็นสีเทากดไม่ได้
+const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub';
+const SHEETS = [
+  { id: 'round1',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 1', gid: null },
+  { id: 'round2',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 2', gid: null },
+  { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
+  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครุ ก) 102 แห่ง',  gid: '2025024087', columns: {} },
+];
+const DEFAULT_SHEET_ID = 'round3';
+
+function sheetUrl(sheet){
+  if (sheet.url) return sheet.url;
+  return `${SHEET_BASE_URL}?gid=${sheet.gid}&single=true&output=csv`;
+}
+function sheetIsReady(sheet){ return !!(sheet.url || sheet.gid); }
+
+// ชีทที่เลือกอยู่ — อ่านจาก ?sheet=xxx ใน URL ถ้าไม่มีหรือไม่ถูกต้องใช้ค่าเริ่มต้น
+function pickInitialSheet(){
+  const wanted = new URLSearchParams(location.search).get('sheet');
+  const found = SHEETS.find(s => s.id === wanted && sheetIsReady(s));
+  return found || SHEETS.find(s => s.id === DEFAULT_SHEET_ID) || SHEETS.find(sheetIsReady);
+}
+let currentSheet = pickInitialSheet();
 
 const STATUS = { PENDING: 'pending', PROGRESS: 'progress', DONE: 'done', OVERDUE: 'overdue', NOTRANSFER: 'notransfer' };
 const STATUS_LABEL = { pending: 'รอดำเนินการ', progress: 'กำลังดำเนินการ', done: 'ดำเนินการแล้ว', overdue: 'เลยกำหนด', notransfer: 'ไม่โอนข้อมูล' };
@@ -7,7 +36,8 @@ const STAGE_LABEL = { migration:'Migration', transfer:'Transfer', verify:'ตร
 
 // ตำแหน่งคอลัมน์ใน Google Sheet (อ้างอิงตามตัวอักษรคอลัมน์ เช่น A, B, ... AA, AB)
 // map ตรงตามที่ยืนยันแล้ว ถ้าคอลัมน์ไหนขยับตำแหน่งในชีทจริง แก้ค่าตรงนี้ได้เลย
-const COLUMN_LETTER = {
+const DEFAULT_COLUMNS = {
+  followUp: 'B',     // ติดตาม (บันทึกการโทรสอบถาม/เหตุผล พิมพ์ข้อความอิสระ)
   owner: 'C',        // ผู้รับผิดชอบ
   readyDate: 'D',     // วันที่พร้อมขึ้นระบบ
   code: 'E',          // รหัสสถานพยาบาล
@@ -23,6 +53,11 @@ const COLUMN_LETTER = {
   launch: 'AD',        // ประกาศใช้งาน
   usageStatus: 'AF',   // ขึ้นระบบแล้วไม่ใช้งาน (ใช้งาน / ไม่ใช้งาน / ใช้งานบางวัน)
 };
+
+// คอลัมน์ที่ใช้จริงของชีทที่เลือก = ค่าเริ่มต้น + ค่าที่แท็บนั้นระบุทับไว้ (ถ้ามี)
+function getColumns(sheet){
+  return Object.assign({}, DEFAULT_COLUMNS, (sheet && sheet.columns) || {});
+}
 
 // แปลงตัวอักษรคอลัมน์ (A, B, ... Z, AA, AB, ...) เป็นตำแหน่ง index แบบ 0-based
 function colLetterToIndex(letters){
@@ -105,10 +140,10 @@ function classifyUsageStatus(raw){
   return { key: 'us-other', label: v };
 }
 
-function csvRowsToData(rows){
+function csvRowsToData(rows, columns){
   const idx = {};
-  Object.keys(COLUMN_LETTER).forEach(key => {
-    idx[key] = colLetterToIndex(COLUMN_LETTER[key]);
+  Object.keys(columns).forEach(key => {
+    idx[key] = colLetterToIndex(columns[key]);
   });
   return rows.slice(1).map(r => {
     const get = key => (r[idx[key]] || '').trim();
@@ -122,6 +157,7 @@ function csvRowsToData(rows){
       oldProgram: get('oldProgram'),
       owner: get('owner'),
       readyDate: get('readyDate'),
+      followUp: get('followUp'),
       anydeskId: get('anydesk'),
       migration: normalizeStatus(get('migration')),
       transfer: normalizeStatus(get('transfer')),
@@ -135,21 +171,34 @@ function csvRowsToData(rows){
   }).filter(r => r.code || r.org);
 }
 
+let loadToken = 0; // กันผลลัพธ์ของการโหลดเก่าที่ช้า มาทับชีทที่เพิ่งสลับไป
 async function loadData(){
+  const token = ++loadToken;
+  const sheet = currentSheet;
   const statusEl = document.getElementById('load-status');
-  statusEl.textContent = 'กำลังโหลดข้อมูล...';
+  statusEl.classList.remove('error');
+  statusEl.textContent = `กำลังโหลดข้อมูล "${sheet.label}"...`;
+  let parsed = [], errorMsg = '';
   try {
-    const res = await fetch(CSV_URL, { cache: 'no-store' });
+    const res = await fetch(sheetUrl(sheet), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     const rows = parseCSV(text);
-    const parsed = csvRowsToData(rows);
-    if (parsed.length === 0) throw new Error('ไม่พบข้อมูลในชีท');
-    DATA = parsed;
-    statusEl.textContent = `เชื่อมต่อสำเร็จ — ${DATA.length} รายการ`;
+    parsed = csvRowsToData(rows, getColumns(sheet));
+    if (parsed.length === 0) throw new Error('ไม่พบข้อมูลในชีทนี้');
   } catch (err) {
-    DATA = SAMPLE_DATA;
-    statusEl.textContent = 'ดึงข้อมูลจาก Google Sheet ไม่สำเร็จ (' + err.message + ') — กำลังแสดงข้อมูลตัวอย่างแทน ลองกดรีเฟรช หรือเปิดไฟล์นี้ผ่านเว็บเซิร์ฟเวอร์ท้องถิ่นแทนการเปิดไฟล์ตรงๆ';
+    parsed = [];
+    errorMsg = err.message;
+  }
+  if (token !== loadToken) return; // ผู้ใช้สลับชีทไปแล้ว ทิ้งผลลัพธ์นี้
+
+  DATA = parsed;
+  if (errorMsg){
+    // ไม่ใช้ข้อมูลตัวอย่างแทน เพราะมีหลายชีท อาจทำให้เข้าใจผิดว่าเป็นข้อมูลจริง
+    statusEl.classList.add('error');
+    statusEl.textContent = `โหลด "${sheet.label}" ไม่สำเร็จ (${errorMsg}) — ตรวจว่าแท็บนี้ถูก Publish to web แล้ว และ gid ถูกต้อง แล้วกดรีเฟรช`;
+  } else {
+    statusEl.textContent = `เชื่อมต่อสำเร็จ — ${sheet.label} (${DATA.length} รายการ)`;
   }
   populateFilterOptions();
   MAX_READY_DATE = computeMaxReadyDate();
@@ -157,6 +206,49 @@ async function loadData(){
   renderKPIs(DATA);
   renderTable(DATA);
   renderOwnerView(DATA);
+}
+
+// ===== แท็บเลือกชีท =====
+function renderSheetTabs(){
+  const box = document.getElementById('sheet-tabs');
+  box.innerHTML = '';
+  SHEETS.forEach(sheet => {
+    const ready = sheetIsReady(sheet);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sheet-tab' + (sheet === currentSheet ? ' active' : '') + (ready ? '' : ' disabled');
+    btn.textContent = sheet.label;
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', sheet === currentSheet ? 'true' : 'false');
+    if (!ready){
+      btn.disabled = true;
+      btn.title = 'ยังไม่ได้ตั้งค่า gid ของแท็บนี้';
+    } else {
+      btn.addEventListener('click', () => switchSheet(sheet.id));
+    }
+    box.appendChild(btn);
+  });
+  const nameEl = document.getElementById('sheet-name');
+  if (nameEl) nameEl.textContent = currentSheet.label;
+}
+
+function resetAllFilters(){
+  ['f-region','f-province','f-owner','f-status','f-transfer','f-usage','f-date-from','f-date-to','f-search']
+    .forEach(id => { document.getElementById(id).value = ''; });
+}
+
+function switchSheet(id){
+  const next = SHEETS.find(s => s.id === id && sheetIsReady(s));
+  if (!next || next === currentSheet) return;
+  currentSheet = next;
+  // เก็บชีทที่เลือกไว้ใน URL เพื่อแชร์ลิงก์/รีเฟรชแล้วยังอยู่ชีทเดิม
+  const url = new URL(location.href);
+  url.searchParams.set('sheet', next.id);
+  history.replaceState(null, '', url);
+  resetAllFilters(); // ตัวกรองของชีทเก่าอาจไม่มีในชีทใหม่ ล้างก่อนกันข้อมูลหาย
+  renderSheetTabs();
+  document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+  loadData();
 }
 
 function overallStatus(row){
@@ -268,6 +360,11 @@ function initials(name){
   const parts = name.trim().split(' ');
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
+function escapeHtml(str){
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 // ย่อ "โรงพยาบาลส่งเสริมสุขภาพตำบล..." ให้เหลือ "รพ.สต. ..." เพื่อให้คอลัมน์ชื่อหน่วยงานไม่กว้างเกินไป
 function shortenOrgName(name){
   const v = (name || '').trim();
@@ -373,6 +470,7 @@ function renderTable(rows){
       </td>
       <td><span class="badge ${st}"><span class="dot"></span>${STATUS_LABEL[st]}</span></td>
       <td><span class="badge ${row.transferStatusKey}">${row.transferStatusLabel}</span></td>
+      <td class="followup">${row.followUp ? escapeHtml(row.followUp) : '<span class="muted">—</span>'}</td>
       <td><span class="badge ${row.usageStatusKey}">${row.usageStatusLabel}</span></td>
     `;
     body.appendChild(tr);
@@ -499,7 +597,7 @@ function applyFilters(){
       if (dateTo && dTime > new Date(dateTo + 'T00:00:00').getTime()) return false;
     }
     if (search){
-      const hay = (row.code + ' ' + row.org + ' ' + shortenOrgName(row.org) + ' ' + row.owner).toLowerCase();
+      const hay = (row.code + ' ' + row.org + ' ' + shortenOrgName(row.org) + ' ' + row.owner + ' ' + row.followUp).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -530,4 +628,5 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
 
 document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
 
+renderSheetTabs();
 loadData();
