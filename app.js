@@ -8,9 +8,10 @@
 // gid เป็น null = ยังไม่ได้ตั้งค่า ปุ่มจะเป็นสีเทากดไม่ได้
 const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub';
 const SHEETS = [
-
+  { id: 'round1',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 1', gid: null },
+  { id: 'round2',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 2', gid: null },
   { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
-  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087', columns: {} },
+  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครุ ก) 102 แห่ง',  gid: '2025024087', columns: {} },
 ];
 const DEFAULT_SHEET_ID = 'round3';
 
@@ -219,9 +220,7 @@ async function loadData(){
   populateFilterOptions();
   MAX_READY_DATE = computeMaxReadyDate();
   updateDateFilterBounds();
-  renderKPIs(DATA);
-  renderTable(DATA);
-  renderOwnerView(DATA);
+  applyFilters(); // วาด KPI/กราฟ/ตาราง/มุมมอง BA ตามตัวกรองที่ค้างอยู่
 }
 
 // ===== แท็บเลือกชีท =====
@@ -449,7 +448,14 @@ function renderKPIs(rows){
   document.getElementById('kpi-overdue').textContent = overdue;
   document.getElementById('kpi-notransfer').textContent = notransfer;
   document.getElementById('kpi-unused').textContent = unused;
+  // สถานะใช้งานหลังขึ้นระบบ (คอลัมน์ AF) นับจากทุกแถวในขอบเขตที่เลือก 4 กลุ่มรวมกันเท่ากับ "ทั้งหมด"
+  const uActive = rows.filter(r => r.usageStatusKey === 'us-active').length;
+  const uPartial = rows.filter(r => r.usageStatusKey === 'us-partial').length;
+  const uNone = total - uActive - uPartial - unused;
+  document.getElementById('kpi-active').textContent = uActive;
+  document.getElementById('kpi-active-sub').textContent = `ใช้งานบางวัน ${uPartial} · ไม่ระบุ ${uNone}`;
   updateDeadlineFlag();
+  renderInsights(rows);
 }
 
 function renderTable(rows){
@@ -596,11 +602,13 @@ function applyFilters(){
   const dateTo = document.getElementById('f-date-to').value;
   const search = document.getElementById('f-search').value.trim().toLowerCase();
 
-  const filtered = DATA.filter(row => {
+  // scopeOnly=true: ใช้เฉพาะตัวกรองขอบเขต (เขต/จังหวัด/ผู้รับผิดชอบ/โอนข้อมูล/ใช้งาน/วันที่)
+  // ตัดตัวกรองสถานะกับช่องค้นหาออก เพื่อให้ KPI/กราฟยังเห็นภาพรวมของขอบเขตนั้น ไม่หดเหลือแต่แถวที่ค้นหา
+  const matches = (row, scopeOnly) => {
     if (region && row.region !== region) return false;
     if (province && row.province !== province) return false;
     if (owner && row.owner !== owner) return false;
-    if (status && displayStatus(row) !== status) return false;
+    if (!scopeOnly && status && displayStatus(row) !== status) return false;
     if (transfer && row.transferStatusLabel !== transfer) return false;
     if (usage && row.usageStatusLabel !== usage) return false;
     if (dateFrom || dateTo){
@@ -610,12 +618,15 @@ function applyFilters(){
       if (dateFrom && dTime < new Date(dateFrom + 'T00:00:00').getTime()) return false;
       if (dateTo && dTime > new Date(dateTo + 'T00:00:00').getTime()) return false;
     }
-    if (search){
+    if (!scopeOnly && search){
       const hay = (row.code + ' ' + row.org + ' ' + shortenOrgName(row.org) + ' ' + row.owner + ' ' + row.followUp).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
-  });
+  };
+  const filtered = DATA.filter(r => matches(r, false));
+  const scoped = DATA.filter(r => matches(r, true));
+  renderKPIs(scoped);
   renderTable(filtered);
   renderOwnerView(filtered);
 }
@@ -637,6 +648,75 @@ document.getElementById('f-reset').addEventListener('click', () => {
 
 document.getElementById('btn-refresh').addEventListener('click', () => {
   loadData();
+});
+
+
+// ===== แนวทาง B: กราฟสรุป + แผง "ต้องติดตามด่วน" (เรียกจาก renderKPIs) =====
+const DONUT_COLORS = { done:'#2E9E4A', progress:'#3B82F6', pending:'#C9A227', overdue:'#D6493C', notransfer:'#9AA3AC' };
+function daysOverdue(row){
+  const due = USE_ROUND_DEADLINE ? MAX_READY_DATE : parseSheetDate(row.readyDate);
+  if (!due) return 0;
+  return Math.max(0, Math.floor((new Date(REFERENCE_DATE + 'T00:00:00') - due) / 864e5));
+}
+function renderInsights(rows){
+  const funnel = document.getElementById('funnel');
+  if (!funnel) return;
+  const total = rows.length;
+  // 1) คอขวดของขั้นตอน
+  funnel.innerHTML = STAGES.map(s => {
+    const n = k => rows.filter(r => r[s] === k).length;
+    const d = n('done'), p = n('progress'), w = n('pending');
+    const seg = (k, v) => v ? `<span class="${k}" style="flex:${v}" title="${STATUS_LABEL[k]} ${v}"></span>` : '';
+    return `<div class="fn-row"><span>${STAGE_LABEL[s]}</span><div class="fn-bar">${seg('done', d)}${seg('progress', p)}${seg('pending', w)}</div><span class="fn-num">${d}/${total}</span></div>`;
+  }).join('');
+  // 2) สัดส่วนสถานะ (donut)
+  const keys = ['done','progress','pending','overdue','notransfer'];
+  const counts = keys.map(k => rows.filter(r => displayStatus(r) === k).length);
+  let acc = 0;
+  const stops = counts.map((c, i) => { const from = acc; acc += total ? c / total * 100 : 0; return `${DONUT_COLORS[keys[i]]} ${from}% ${acc}%`; });
+  document.getElementById('donut').style.background = total ? `conic-gradient(${stops.join(',')})` : 'var(--surface-muted)';
+  document.getElementById('donut-total').textContent = total;
+  document.getElementById('donut-legend').innerHTML = keys.map((k, i) => `<li><span><i class="dot ${k}"></i>${STATUS_LABEL[k]}</span><b>${counts[i]}</b></li>`).join('');
+  // 3) ต้องติดตามด่วน: เลยกำหนด (นานสุดก่อน) แล้วตามด้วย ประกาศใช้แล้วแต่ไม่ใช้งาน
+  const overdue = rows.filter(r => displayStatus(r) === STATUS.OVERDUE).sort((a, b) => daysOverdue(b) - daysOverdue(a));
+  const unused = rows.filter(r => r.usageStatusKey === 'us-inactive' && displayStatus(r) !== STATUS.OVERDUE);
+  const urgent = overdue.concat(unused);
+  document.getElementById('urgent-sub').textContent = `เลยกำหนด ${overdue.length} แห่ง · ไม่ใช้งานหลังขึ้นระบบ ${unused.length} แห่ง`;
+  const unusedAll = rows.filter(r => r.usageStatusKey === 'us-inactive').length;
+  document.getElementById('urgent-unused').textContent = `ดูเฉพาะไม่ใช้งาน (${unusedAll})`;
+  const ovBtn = document.getElementById('urgent-overdue');
+  ovBtn.textContent = `ดูเฉพาะเลยกำหนด (${overdue.length})`;
+  ovBtn.disabled = overdue.length === 0;
+  const list = document.getElementById('urgent-list');
+  list.innerHTML = urgent.length ? urgent.map(r => {
+    const isOver = displayStatus(r) === STATUS.OVERDUE;
+    const badge = isOver ? `<span class="badge overdue"><span class="dot"></span>เลย ${daysOverdue(r)} วัน</span>` : `<span class="badge us-inactive">ไม่ใช้งาน</span>`;
+    return `<div class="u-item"><div><div class="u-name">${escapeHtml(shortenOrgName(r.org))}</div><div class="u-meta">${escapeHtml(r.province)} · ผู้รับผิดชอบ ${escapeHtml(r.owner || '—')}</div></div>
+      <div class="u-side">${badge}<button type="button" class="link-btn" data-code="${escapeHtml(r.code)}">ดูในตาราง</button></div>
+      <div class="u-note">${(r.followUp && r.followUp.trim() !== '0') ? escapeHtml(r.followUp) : 'ยังไม่มีบันทึกติดตาม'}</div></div>`;
+  }).join('') : '<div class="u-empty">ไม่มีหน่วยงานที่ต้องติดตามด่วน</div>';
+}
+document.getElementById('urgent-list').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-code]');
+  if (!btn) return;
+  document.getElementById('f-search').value = btn.dataset.code;
+  setView('site'); applyFilters();
+  document.getElementById('site-view').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+function jumpToTable(){
+  setView('site'); applyFilters();
+  document.getElementById('site-view').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+document.getElementById('urgent-unused').addEventListener('click', () => {
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-search').value = '';
+  document.getElementById('f-usage').value = 'ไม่ใช้งาน';
+  jumpToTable();
+});
+document.getElementById('urgent-overdue').addEventListener('click', () => {
+  document.getElementById('f-search').value = '';
+  document.getElementById('f-status').value = 'overdue';
+  jumpToTable();
 });
 
 

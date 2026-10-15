@@ -6,55 +6,56 @@
 <title>Dashboard ติดตามการขึ้นระบบ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600&family=Sarabun:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <div class="wrap">
 
-  <div class="topbar">
-    <div>
-      <p class="eyebrow">System go-live tracker</p>
-      <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
-      <p class="sub">ข้อมูลรวมจากทีม — ชีท: <b id="sheet-name"></b></p>
+  <section class="hero">
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">System go-live tracker</p>
+        <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
+        <p class="sub">ข้อมูลรวมจากทีม — ชีท: <b id="sheet-name"></b></p>
+      </div>
+      <div class="updated">ดึงข้อมูลเมื่อ<br><b id="updated-time"></b></div>
     </div>
-    <div class="updated">ดึงข้อมูลเมื่อ<br><b id="updated-time"></b></div>
-  </div>
+    <div class="hero-kpis">
+      <div class="hk"><p class="label">หน่วยงานทั้งหมด</p><p class="value" id="kpi-total">0</p></div>
+      <div class="hk"><p class="label">ดำเนินการครบทุกขั้นตอน</p><p class="value" id="kpi-done">0</p></div>
+      <div class="hk warn"><p class="label">เลยกำหนดแล้ว</p><p class="value" id="kpi-overdue">0</p></div>
+      <div class="hk"><p class="label">ความคืบหน้ารวม</p><p class="value" id="kpi-percent">0%</p>
+        <div class="hbar"><div id="kpi-bar" style="width:0%"></div></div></div>
+    </div>
+  </section>
 
   <div class="sheet-tabs" id="sheet-tabs" role="tablist" aria-label="เลือกชีท/รอบการติดตาม"></div>
 
   <div class="kpi-grid">
-    <div class="kpi">
-      <p class="label">หน่วยงานทั้งหมด</p>
-      <p class="value" id="kpi-total">0</p>
+    <div class="kpi"><p class="label">กำลังดำเนินการ</p><p class="value" id="kpi-progress">0</p></div>
+    <div class="kpi"><p class="label">รอดำเนินการ (ยังไม่เริ่ม)</p><p class="value" id="kpi-pending">0</p></div>
+    <div class="kpi neutral"><p class="label">ไม่โอนข้อมูล</p><p class="value" id="kpi-notransfer">0</p></div>
+    <div class="kpi good"><p class="label">ใช้งานอยู่</p><p class="value" id="kpi-active">0</p><p class="kpi-sub" id="kpi-active-sub"></p></div>
+    <div class="kpi danger"><p class="label">ประกาศใช้งานแล้ว แต่ไม่ได้ใช้งานจริง</p><p class="value" id="kpi-unused">0</p></div>
+  </div>
+
+  <div class="insights">
+    <div class="panel">
+      <h2>คอขวดของขั้นตอน</h2>
+      <p class="panel-sub">จำนวนหน่วยงานในแต่ละขั้นตอน</p>
+      <div id="funnel"></div>
+      <div class="mini-legend"><span><i class="dot done"></i>เสร็จ</span><span><i class="dot progress"></i>กำลังทำ</span><span><i class="dot pending"></i>ยังไม่เริ่ม</span></div>
     </div>
-    <div class="kpi">
-      <p class="label">ดำเนินการแล้วครบทุกขั้นตอน</p>
-      <p class="value" id="kpi-done">0</p>
+    <div class="panel">
+      <h2>สัดส่วนสถานะ</h2>
+      <p class="panel-sub">ตามสถานะที่แสดงในตาราง</p>
+      <div class="donut-wrap"><div class="donut" id="donut"><div class="donut-hole"><b id="donut-total">0</b><span>แห่ง</span></div></div>
+      <ul class="donut-legend" id="donut-legend"></ul></div>
     </div>
-    <div class="kpi">
-      <p class="label">กำลังดำเนินการ</p>
-      <p class="value" id="kpi-progress">0</p>
-    </div>
-    <div class="kpi">
-      <p class="label">รอดำเนินการ (ยังไม่เริ่ม)</p>
-      <p class="value" id="kpi-pending">0</p>
-    </div>
-    <div class="kpi accent">
-      <p class="label">ความคืบหน้ารวม</p>
-      <p class="value" id="kpi-percent">0%</p>
-      <div class="bar"><div id="kpi-bar" style="width:0%"></div></div>
-    </div>
-    <div class="kpi danger">
-      <p class="label">เลยกำหนดแล้ว</p>
-      <p class="value" id="kpi-overdue">0</p>
-    </div>
-    <div class="kpi neutral">
-      <p class="label">ไม่โอนข้อมูล</p>
-      <p class="value" id="kpi-notransfer">0</p>
-    </div>
-    <div class="kpi danger">
-      <p class="label">ประกาศใช้งานแล้ว แต่ไม่ได้ใช้งานจริง</p>
-      <p class="value" id="kpi-unused">0</p>
+    <div class="panel urgent">
+      <div class="panel-head"><div><h2>ต้องติดตามด่วน</h2><p class="panel-sub" id="urgent-sub"></p></div>
+        <div class="head-btns"><button type="button" class="link-btn" id="urgent-unused">ดูเฉพาะไม่ใช้งาน</button><button type="button" class="link-btn" id="urgent-overdue">ดูเฉพาะเลยกำหนด</button></div></div>
+      <div id="urgent-list"></div>
     </div>
   </div>
 
@@ -110,7 +111,7 @@
     </div>
     <div class="view-toggle">
       <button id="view-btn-site" class="active">รายหน่วยงาน</button>
-      <button id="view-btn-owner">ผู้รับผิดรายบุคคล</button>
+      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
     </div>
   </div>
 
@@ -147,6 +148,6 @@
 
 </div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
