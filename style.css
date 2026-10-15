@@ -394,3 +394,14 @@ td.followup{ min-width: 130px; max-width: 200px; font-size: 12.5px; }
 /* คอลัมน์ที่ไม่ควรตัดบรรทัด: รหัส จังหวัด เขต โปรแกรมเดิม ผู้รับผิดชอบ วันที่ ขั้นตอน (ชื่อหน่วยงานและติดตามให้ตัดบรรทัดได้) */
 tbody td:nth-child(1), tbody td:nth-child(3), tbody td:nth-child(4), tbody td:nth-child(5),
 tbody td:nth-child(6), tbody td:nth-child(7), tbody td:nth-child(8){ white-space: nowrap; }
+
+/* ปุ่มรีเฟรชข้อมูล (อยู่ในแถบตัวกรองด้านบน) */
+.refresh-btn{
+  font-family:'Sarabun', sans-serif; font-size:13.5px; font-weight:500;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--accent); background: var(--accent-tint); color: var(--accent);
+}
+.refresh-btn:hover:not(:disabled){ background: var(--accent); color: #fff; }
+.refresh-btn.loading{ opacity: .6; cursor: progress; }
+.refresh-note{ font-size: 12.5px; color: var(--text-muted); }
+.refresh-note.error{ color: var(--overdue-text); font-weight: 500; }

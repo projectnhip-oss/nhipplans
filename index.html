@@ -17,7 +17,7 @@
       <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
       <p class="sub">ข้อมูลรวมจากทีม — ชีท: <b id="sheet-name"></b></p>
     </div>
-    <div class="updated">อัปเดตล่าสุด<br><b id="updated-time"></b></div>
+    <div class="updated">ดึงข้อมูลเมื่อ<br><b id="updated-time"></b></div>
   </div>
 
   <div class="sheet-tabs" id="sheet-tabs" role="tablist" aria-label="เลือกชีท/รอบการติดตาม"></div>
@@ -71,6 +71,8 @@
     <select id="f-region"><option value="">ทุกเขต</option></select>
     <select id="f-province"><option value="">ทุกจังหวัด</option></select>
     <select id="f-owner"><option value="">ทุกผู้รับผิดชอบ</option></select>
+    <button type="button" class="refresh-btn" id="btn-refresh">↻ รีเฟรชข้อมูล</button>
+    <span class="refresh-note" id="refresh-note"></span>
     <select id="f-status"><option value="">ทุกสถานะความคืบหน้า</option>
       <option value="done">ดำเนินการแล้วครบ</option>
       <option value="progress">กำลังดำเนินการ</option>
@@ -141,7 +143,7 @@
     <div class="empty" id="empty-state" style="display:none;">ไม่พบข้อมูลที่ตรงกับตัวกรอง</div>
   </div><!-- /#site-view -->
 
-  <p class="source-note" id="source-note">แหล่งข้อมูล: <span class="tag">Google Sheet (published CSV)</span> <span id="load-status">กำลังโหลดข้อมูล...</span> <button class="reset" id="btn-refresh" style="padding:0;">รีเฟรชข้อมูล</button></p>
+  <p class="source-note" id="source-note">แหล่งข้อมูล: <span class="tag">Google Sheet (published CSV)</span> <span id="load-status">กำลังโหลดข้อมูล...</span></p>
 
 </div>
 

@@ -171,9 +171,21 @@ function csvRowsToData(rows, columns){
   }).filter(r => r.code || r.org);
 }
 
+function setRefreshing(on){
+  const b = document.getElementById('btn-refresh');
+  if (!b) return;
+  b.disabled = on;
+  b.classList.toggle('loading', on);
+  b.textContent = on ? '↻ กำลังโหลด...' : '↻ รีเฟรชข้อมูล';
+}
+function stampLoadTime(){
+  document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+}
+
 let loadToken = 0; // กันผลลัพธ์ของการโหลดเก่าที่ช้า มาทับชีทที่เพิ่งสลับไป
 async function loadData(){
   const token = ++loadToken;
+  setRefreshing(true);
   const sheet = currentSheet;
   const statusEl = document.getElementById('load-status');
   statusEl.classList.remove('error');
@@ -191,6 +203,11 @@ async function loadData(){
     errorMsg = err.message;
   }
   if (token !== loadToken) return; // ผู้ใช้สลับชีทไปแล้ว ทิ้งผลลัพธ์นี้
+  setRefreshing(false);
+  const noteEl = document.getElementById('refresh-note');
+  noteEl.textContent = errorMsg ? 'โหลดไม่สำเร็จ — ดูรายละเอียดท้ายหน้า' : '';
+  noteEl.classList.toggle('error', !!errorMsg);
+  if (!errorMsg) stampLoadTime(); // อัปเดตเวลาเฉพาะเมื่อดึงข้อมูลสำเร็จจริง
 
   DATA = parsed;
   if (errorMsg){
@@ -247,7 +264,6 @@ function switchSheet(id){
   history.replaceState(null, '', url);
   resetAllFilters(); // ตัวกรองของชีทเก่าอาจไม่มีในชีทใหม่ ล้างก่อนกันข้อมูลหาย
   renderSheetTabs();
-  document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
   loadData();
 }
 
@@ -621,11 +637,9 @@ document.getElementById('f-reset').addEventListener('click', () => {
 });
 
 document.getElementById('btn-refresh').addEventListener('click', () => {
-  document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
   loadData();
 });
 
-document.getElementById('updated-time').textContent = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
 
 renderSheetTabs();
 loadData();
