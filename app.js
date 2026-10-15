@@ -455,7 +455,6 @@ function renderTable(rows){
       <td>${row.province}</td>
       <td><span class="region-tag">${row.region}</span></td>
       <td>${row.oldProgram}</td>
-      <td class="code">${row.anydeskId ? row.anydeskId : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td>
         <div class="owner-cell">
           <span class="avatar">${initials(row.owner)}</span>

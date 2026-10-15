@@ -380,3 +380,17 @@
 /* คอลัมน์ติดตาม: ข้อความพิมพ์อิสระ ให้ตัดบรรทัดได้ ไม่ดันตารางกว้างเกินไป */
 td.followup{ min-width: 160px; max-width: 240px; white-space: normal; line-height: 1.4; color: var(--text-primary); font-size: 13px; }
 td.followup .muted{ color: var(--text-muted); }
+
+/* ===== ตารางแบบกระชับ: ให้เห็นครบทุกคอลัมน์โดยไม่ต้องเลื่อนซ้าย-ขวา ===== */
+.wrap{ max-width: 1560px; padding-left: 24px; padding-right: 24px; }
+table{ font-size: 13px; }
+thead th{ white-space: normal; padding: 9px 8px; line-height: 1.25; vertical-align: bottom; }
+tbody td{ padding: 9px 8px; }
+.pipeline{ gap: 2px; }
+.step{ width: 20px; }
+.badge{ padding: 3px 8px; font-size: 11.5px; }
+.owner-cell{ gap: 6px; }
+td.followup{ min-width: 130px; max-width: 200px; font-size: 12.5px; }
+/* คอลัมน์ที่ไม่ควรตัดบรรทัด: รหัส จังหวัด เขต โปรแกรมเดิม ผู้รับผิดชอบ วันที่ ขั้นตอน (ชื่อหน่วยงานและติดตามให้ตัดบรรทัดได้) */
+tbody td:nth-child(1), tbody td:nth-child(3), tbody td:nth-child(4), tbody td:nth-child(5),
+tbody td:nth-child(6), tbody td:nth-child(7), tbody td:nth-child(8){ white-space: nowrap; }
