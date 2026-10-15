@@ -351,3 +351,32 @@
     .kpi-grid{ grid-template-columns: repeat(2,1fr); }
     .wrap{ padding: 20px; }
   }
+
+
+/* แท็บเลือกชีท / รอบการติดตาม */
+.sheet-tabs{
+  display:flex; flex-wrap:wrap; gap:8px;
+  margin: 0 0 18px;
+}
+.sheet-tab{
+  font-family:'Sarabun', sans-serif; font-size:13.5px; font-weight:500;
+  padding: 8px 14px; border-radius: 100px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.sheet-tab:hover:not(.disabled):not(.active){ border-color: var(--accent); color: var(--primary); }
+.sheet-tab.active{
+  background: var(--primary); border-color: var(--primary); color: #fff; cursor: default;
+}
+.sheet-tab.disabled{
+  background: var(--surface-muted); color: var(--text-muted);
+  border-style: dashed; cursor: not-allowed;
+}
+#load-status.error{ color: var(--overdue-text); font-weight: 500; }
+.sub b{ color: var(--primary); font-weight: 600; }
+
+/* คอลัมน์ติดตาม: ข้อความพิมพ์อิสระ ให้ตัดบรรทัดได้ ไม่ดันตารางกว้างเกินไป */
+td.followup{ min-width: 160px; max-width: 240px; white-space: normal; line-height: 1.4; color: var(--text-primary); font-size: 13px; }
+td.followup .muted{ color: var(--text-muted); }
