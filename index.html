@@ -15,10 +15,12 @@
     <div>
       <p class="eyebrow">System go-live tracker</p>
       <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
-      <p class="sub">ข้อมูลรวมจากทีม — สถานะ Anydesk, Migration, Transfer, ตรวจสอบข้อมูล และประกาศใช้งาน</p>
+      <p class="sub">ข้อมูลรวมจากทีม — ชีท: <b id="sheet-name"></b></p>
     </div>
     <div class="updated">อัปเดตล่าสุด<br><b id="updated-time"></b></div>
   </div>
+
+  <div class="sheet-tabs" id="sheet-tabs" role="tablist" aria-label="เลือกชีท/รอบการติดตาม"></div>
 
   <div class="kpi-grid">
     <div class="kpi">
@@ -90,7 +92,7 @@
       <span>ถึง</span>
       <input type="date" id="f-date-to" title="ถึงวันที่">
     </div>
-    <input type="text" id="f-search" placeholder="ค้นหา รหัสสถานพยาบาล / ชื่อหน่วยงาน / ผู้รับผิดชอบ">
+    <input type="text" id="f-search" placeholder="ค้นหา รหัส / ชื่อหน่วยงาน / ผู้รับผิดชอบ / ข้อความติดตาม">
     <button class="reset" id="f-reset">ล้างตัวกรอง</button>
     <span class="count" id="f-count"></span>
   </div>
@@ -106,7 +108,7 @@
     </div>
     <div class="view-toggle">
       <button id="view-btn-site" class="active">รายหน่วยงาน</button>
-      <button id="view-btn-owner">รายชื่อผู้รับผิดชอบ(รายบุคคล)</button>
+      <button id="view-btn-owner">รายผู้รับผิดชอบ (BA)</button>
     </div>
   </div>
 
@@ -130,6 +132,7 @@
             <th>ขั้นตอนการดำเนินการ</th>
             <th>สถานะล่าสุด</th>
             <th>สถานะโอนข้อมูล</th>
+            <th>ติดตาม / เหตุผล</th>
             <th>ใช้งานหลังขึ้นระบบ</th>
           </tr>
         </thead>
