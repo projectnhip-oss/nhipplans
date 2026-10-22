@@ -6,7 +6,7 @@
 <title>Dashboard ติดตามการขึ้นระบบ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600&family=Sarabun:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <div class="wrap">
@@ -18,7 +18,13 @@
         <h1>ติดตามการขึ้นระบบของหน่วยงาน</h1>
         <p class="sub">ข้อมูลรวมจากทีม — ชีท: <b id="sheet-name"></b></p>
       </div>
-      <div class="updated">ดึงข้อมูลเมื่อ<br><b id="updated-time"></b></div>
+      <div class="topbar-right">
+        <div class="updated">ดึงข้อมูลเมื่อ<br><b id="updated-time"></b></div>
+        <div class="hero-actions">
+          <button type="button" class="ghost-btn" id="btn-export">ส่งออก Excel</button>
+          <button type="button" class="ghost-btn" id="btn-copy">คัดลอกสรุป</button>
+        </div>
+      </div>
     </div>
     <div class="hero-kpis">
       <div class="hk"><p class="label">หน่วยงานทั้งหมด</p><p class="value" id="kpi-total">0</p></div>
@@ -148,6 +154,7 @@
 
 </div>
 
-<script src="app.js?v=6"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

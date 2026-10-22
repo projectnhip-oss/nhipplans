@@ -8,6 +8,7 @@
 // gid เป็น null = ยังไม่ได้ตั้งค่า ปุ่มจะเป็นสีเทากดไม่ได้
 const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TUeM8QPOHtoPpXs-7vuu3_akUB1Gh6MpvuXb-IMkTE_K4bQAiDbNJz5Bptg/pub';
 const SHEETS = [
+
   { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
   { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087', columns: {} },
 ];
@@ -624,6 +625,7 @@ function applyFilters(){
   };
   const filtered = DATA.filter(r => matches(r, false));
   const scoped = DATA.filter(r => matches(r, true));
+  scopedRows = scoped;
   renderKPIs(scoped);
   renderTable(filtered);
   renderOwnerView(filtered);
@@ -716,6 +718,116 @@ document.getElementById('urgent-overdue').addEventListener('click', () => {
   document.getElementById('f-status').value = 'overdue';
   jumpToTable();
 });
+
+// ===== Export: สรุป Excel + คัดลอกข้อความ (ใช้ข้อมูลขอบเขตเดียวกับ KPI ด้านบน) =====
+let scopedRows = [];
+const pct = (n, t) => t ? (n / t * 100).toFixed(1) + '%' : '-';
+function countBy(rows, fn){ const m = new Map(); rows.forEach(r => { const k = fn(r); m.set(k, (m.get(k) || 0) + 1); }); return m; }
+const TRANSFER_FIXED = ['ขอเลื่อน/ไม่สะดวก', 'ไม่รับสาย/ติดต่อไม่ได้', 'ไม่โอนข้อมูล', 'ยืนยันการโอนข้อมูล'];
+function transferBucket(r){
+  const l = r.transferStatusLabel || '';
+  if (r.transferStatusKey === 'ts-none') return 'ไม่ระบุ';
+  if (l.includes('ยืนยัน') && l.includes('โอน')) return 'ยืนยันการโอนข้อมูล';
+  if (l.includes('ไม่โอน')) return 'ไม่โอนข้อมูล';
+  if (l.includes('เลื่อน') || l.includes('ไม่สะดวก')) return 'ขอเลื่อน/ไม่สะดวก';
+  if (l.includes('ไม่รับสาย') || l.includes('ติดต่อไม่ได้')) return 'ไม่รับสาย/ติดต่อไม่ได้';
+  return l; // ป้ายอื่นตามชีท เช่น เปลี่ยนรอบ 2 / สอบถามข้อมูลเพิ่มเติม
+}
+function buildSummary(rows){
+  const st = countBy(rows, displayStatus);
+  const install = [['ดำเนินการแล้ว','done'],['กำลังดำเนินการ','progress'],['รอดำเนินการ (ยังไม่เริ่ม)','pending'],['เลยกำหนด','overdue'],['ไม่โอนข้อมูล','notransfer']]
+    .map(([l, k]) => [l, st.get(k) || 0]);
+  const tr = countBy(rows, transferBucket);
+  const otherT = [...tr.keys()].filter(k => !TRANSFER_FIXED.includes(k) && k !== 'ไม่ระบุ').sort((a, b) => a.localeCompare(b, 'th'));
+  const transfer = TRANSFER_FIXED.concat(otherT, ['ไม่ระบุ']).map(l => [l, tr.get(l) || 0]);
+  const us = countBy(rows, r => r.usageStatusKey);
+  const usage = [['ใช้งาน','us-active'],['ใช้งานบางวัน','us-partial'],['ไม่ใช้งาน','us-inactive'],['ไม่ระบุ','us-none']].map(([l, k]) => [l, us.get(k) || 0]);
+  if (us.get('us-other')) usage.push(['อื่น ๆ', us.get('us-other')]);
+  return { total: rows.length, sections: [['สถานะติดตั้ง', install], ['สถานะการโอนข้อมูล', transfer], ['สถานะการใช้งานหลังขึ้นระบบ', usage]] };
+}
+function scopeText(){
+  const v = id => document.getElementById(id).value;
+  const p = [];
+  if (v('f-region')) p.push(v('f-region'));
+  if (v('f-province')) p.push('จังหวัด ' + v('f-province'));
+  if (v('f-owner')) p.push('ผู้รับผิดชอบ ' + v('f-owner'));
+  if (v('f-transfer')) p.push('โอนข้อมูล: ' + v('f-transfer'));
+  if (v('f-usage')) p.push('ใช้งาน: ' + v('f-usage'));
+  if (v('f-date-from') || v('f-date-to')) p.push(`วันที่พร้อมขึ้นระบบ ${v('f-date-from') || '…'} ถึง ${v('f-date-to') || '…'}`);
+  return p.length ? p.join(' · ') : 'ทั้งหมด';
+}
+const thDate = () => new Date(REFERENCE_DATE + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle: 'long' });
+
+function groupAoA(rows, heads, keyFn, preFn){
+  const cols = ['ทั้งหมด','ดำเนินการแล้ว','กำลังดำเนินการ','รอดำเนินการ','เลยกำหนด','ไม่โอนข้อมูล','ใช้งาน','ใช้งานบางวัน','ไม่ใช้งาน','ไม่ระบุ/อื่น ๆ','ร้อยละเสร็จ (จากที่ทำได้จริง)'];
+  const groups = new Map();
+  rows.forEach(r => { const k = keyFn(r) || '(ไม่ระบุ)'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  const line = (lead, list) => {
+    const n = (fn) => list.filter(fn).length;
+    const t = list.length, nt = n(r => displayStatus(r) === STATUS.NOTRANSFER), done = n(r => displayStatus(r) === STATUS.DONE);
+    const a = n(r => r.usageStatusKey === 'us-active'), pa = n(r => r.usageStatusKey === 'us-partial'), ina = n(r => r.usageStatusKey === 'us-inactive');
+    return lead.concat([t, done, n(r => displayStatus(r) === STATUS.PROGRESS), n(r => displayStatus(r) === STATUS.PENDING), n(r => displayStatus(r) === STATUS.OVERDUE), nt, a, pa, ina, t - a - pa - ina, pct(done, t - nt)]);
+  };
+  const body = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'th')).map(k => line(preFn(groups.get(k)[0], k), groups.get(k)));
+  const pad = Array(heads.length - 1).fill('');
+  return [heads.concat(cols)].concat(body, [line(['รวม'].concat(pad), rows)]);
+}
+function followAoA(rows){
+  const list = rows.filter(r => displayStatus(r) === STATUS.OVERDUE || r.usageStatusKey === 'us-inactive')
+    .sort((a, b) => (displayStatus(b) === STATUS.OVERDUE) - (displayStatus(a) === STATUS.OVERDUE) || daysOverdue(b) - daysOverdue(a));
+  // ตั้งใจไม่ส่งออกคอลัมน์ ติดตาม/เหตุผล และ Anydesk เพราะอาจมีชื่อ เบอร์โทร หรือเลขเชื่อมต่อเครื่อง
+  return [['รหัส','ชื่อหน่วยงาน','จังหวัด','เขต','ผู้รับผิดชอบ','วันที่พร้อมขึ้นระบบ','สถานะติดตั้ง','สถานะโอนข้อมูล','สถานะใช้งาน','เหตุผลที่ต้องติดตาม']]
+    .concat(list.map(r => [r.code, r.org, r.province, r.region, r.owner, exportDate(r.readyDate), STATUS_LABEL[displayStatus(r)], r.transferStatusLabel, r.usageStatusLabel,
+      displayStatus(r) === STATUS.OVERDUE ? `เลยกำหนด ${daysOverdue(r)} วัน` : 'ประกาศใช้งานแล้วแต่ไม่ใช้งาน']));
+}
+// วันที่ในไฟล์ส่งออก: ใช้รูปแบบ พ.ศ. เดียวกับตารางในหน้าเว็บ (เก็บเป็นข้อความ Excel จะได้ไม่แปลงเป็น ค.ศ. เอง)
+const exportDate = raw => raw ? formatDate(raw) : '';
+// รายชื่อหน่วยงานตามสถานะใช้งาน (ใช้งานบางวัน / ใช้งาน) เรียงตามจังหวัด > ผู้รับผิดชอบ > รหัส
+function usageListAoA(rows, key){
+  const list = rows.filter(r => r.usageStatusKey === key)
+    .sort((a, b) => (a.province || '').localeCompare(b.province || '', 'th') || (a.owner || '').localeCompare(b.owner || '', 'th') || (a.code || '').localeCompare(b.code || ''));
+  return [['รหัส','ชื่อหน่วยงาน','จังหวัด','เขต','ผู้รับผิดชอบ','วันที่พร้อมขึ้นระบบ','สถานะติดตั้ง','สถานะโอนข้อมูล','สถานะใช้งาน']]
+    .concat(list.map(r => [r.code, r.org, r.province, r.region, r.owner, exportDate(r.readyDate), STATUS_LABEL[displayStatus(r)], r.transferStatusLabel, r.usageStatusLabel]));
+}
+function exportExcel(){
+  if (typeof XLSX === 'undefined') { alert('โหลดไลบรารี Excel ไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต) ลองรีเฟรชหน้านี้ใหม่'); return; }
+  const rows = scopedRows, s = buildSummary(rows);
+  const aoa = [['สรุปการขึ้นระบบของหน่วยงาน'], [currentSheet.label], ['ข้อมูล ณ วันที่', thDate()], ['ดึงข้อมูลเมื่อ', document.getElementById('updated-time').textContent],
+    ['ขอบเขต', scopeText()], ['หมายเหตุ', 'ไม่รวมตัวกรองสถานะความคืบหน้าและช่องค้นหา'], ['หน่วยงานทั้งหมด (แห่ง)', s.total], []];
+  s.sections.forEach(([title, items]) => {
+    aoa.push([title], ['รายการ', 'จำนวน (แห่ง)', 'ร้อยละ']);
+    items.forEach(([l, n]) => aoa.push([l, n, pct(n, s.total)]));
+    aoa.push(['รวม', items.reduce((a, x) => a + x[1], 0), pct(s.total, s.total)], []);
+  });
+  const wb = XLSX.utils.book_new();
+  const add = (name, data, widths) => { const ws = XLSX.utils.aoa_to_sheet(data); ws['!cols'] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  add('สรุป', aoa, [34, 22, 12]);
+  const gw = [20, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 22];
+  add('รายจังหวัด', groupAoA(rows, ['เขต', 'จังหวัด'], r => r.province, (r, k) => [r.region || '', k]), gw);
+  add('รายผู้รับผิดชอบ', groupAoA(rows, ['ผู้รับผิดชอบ'], r => r.owner, (r, k) => [k]), [24].concat(gw.slice(2)));
+  add('รายชื่อติดตาม', followAoA(rows), [10, 48, 16, 10, 20, 16, 16, 20, 14, 30]);
+  add('รายชื่อใช้งานบางวัน', usageListAoA(rows, 'us-partial'), [10, 48, 16, 10, 20, 16, 16, 20, 14]);
+  add('รายชื่อใช้งาน', usageListAoA(rows, 'us-active'), [10, 48, 16, 10, 20, 16, 16, 20, 14]);
+  XLSX.writeFile(wb, `สรุปการขึ้นระบบ_${currentSheet.id}_${REFERENCE_DATE}.xlsx`);
+}
+function summaryText(){
+  const s = buildSummary(scopedRows);
+  const out = [`สรุปการขึ้นระบบ: ${currentSheet.label}`, `ข้อมูล ณ วันที่ ${thDate()} | ขอบเขต: ${scopeText()}`, `หน่วยงานทั้งหมด ${s.total} แห่ง`];
+  s.sections.forEach(([title, items]) => {
+    out.push('', title);
+    items.forEach(([l, n]) => out.push(`- ${l} ${n} แห่ง (${pct(n, s.total)})`));
+    out.push(`รวม ${items.reduce((a, x) => a + x[1], 0)} แห่ง`);
+  });
+  return out.join('\n');
+}
+async function copySummary(){
+  const btn = document.getElementById('btn-copy'), text = summaryText();
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  btn.textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => btn.textContent = 'คัดลอกสรุป', 1600);
+}
+document.getElementById('btn-export').addEventListener('click', exportExcel);
+document.getElementById('btn-copy').addEventListener('click', copySummary);
 
 
 renderSheetTabs();
