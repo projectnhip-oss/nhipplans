@@ -10,7 +10,8 @@ const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTvT7TU
 const SHEETS = [
 
   { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
-  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087', columns: {} },
+  { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087' },
+  { id: 'pilot12_2',  label: 'นำร่อง เขต 12 รุ่น 2',   gid: '1924522465', columns: {} },
 ];
 const DEFAULT_SHEET_ID = 'round3';
 
