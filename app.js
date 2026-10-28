@@ -11,7 +11,8 @@ const SHEETS = [
 
   { id: 'round3',  label: 'แผนการติดตั้งรอบพิเศษ รอบที่ 3', gid: '1867606921' },
   { id: 'pilot12', label: 'นำร่อง เขต 12 (ครู ก) 102 แห่ง',  gid: '2025024087' },
-  { id: 'pilot12_2',  label: 'นำร่อง เขต 12 รุ่น 2',   gid: '1924522465', columns: {} },
+  { id: 'pilot12_2',  label: 'นำร่อง เขต 12 รุ่น 2',   gid: '1924522465', },
+  { id: 'chainat',  label: 'แผนติดตั้งจังหวัดชัยนาท',   gid: '1312648651', columns: {} },
 ];
 const DEFAULT_SHEET_ID = 'round3';
 
@@ -556,8 +557,11 @@ function renderOwnerView(rows){
           <div class="owner-card-count">รับผิดชอบ ${total} หน่วยงาน${notransfer ? ` (ทำได้จริง ${workable})` : ''}</div>
         </div>
         <span class="owner-percent" style="color:${percentColor}" title="${done} เสร็จแล้ว จาก ${workable} ที่ทำได้จริง (ตัด ${notransfer} ที่ไม่โอนข้อมูลออกจากตัวหาร)">
-          <span class="pct-value">${percent}%</span>
+                    <span class="ring" style="--p:${percent}; --c:${percentColor};">
+            <span class="ring-value">${percent}%</span>
+          </span>
           <span class="pct-label">ทำครบขั้นตอน</span>
+        </span>
         </span>
       </div>
       <div class="owner-stackbar" title="เสร็จแล้ว ${done} / กำลังดำเนินการ ${progress} / รอดำเนินการ ${pending} / เลยกำหนด ${overdue} / ไม่โอนข้อมูล ${notransfer}">
