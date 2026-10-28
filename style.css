@@ -470,3 +470,48 @@ tbody td:nth-child(6), tbody td:nth-child(7), tbody td:nth-child(8){ white-space
 .ghost-btn{ font-family:inherit; font-size:13px; color:#fff; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.28); border-radius:100px; padding:7px 16px; cursor:pointer; }
 .ghost-btn:hover{ background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.5); }
 .ghost-btn:focus-visible{ outline:2px solid #7FD6CB; outline-offset:2px; }
+
+/* ===== วงกลม % ในการ์ดผู้รับผิดชอบ ===== */
+.owner-percent{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+
+.ring{
+  --size: 58px;                         /* ขนาดวงกลม อยากใหญ่/เล็กแก้ตรงนี้ */
+  width: var(--size); height: var(--size);
+  border-radius: 50%;                   /* ทำให้กล่องสี่เหลี่ยมกลายเป็นวงกลม */
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), #E4EAE7 0);
+  display: grid; place-items: center;   /* จัดตัวเลขให้อยู่กลางวง */
+  position: relative;
+}
+.ring::before{                          /* วงกลมสีขาวด้านใน = เจาะรูให้เป็นวงแหวน */
+  content: "";
+  position: absolute; inset: 6px;       /* 6px = ความหนาของเส้นวงแหวน */
+  border-radius: 50%;
+  background: #fff;
+}
+.ring-value{
+  position: relative;                   /* ให้ตัวเลขอยู่เหนือวงขาว */
+  font-family: 'Kanit', sans-serif; font-weight: 600; font-size: 14px;
+  color: var(--c);
+}
+
+/* การ์ดขอบมน มีเงา และลอยขึ้นเวลาเอาเมาส์ชี้ */
+.owner-card{
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(18,60,77,.07);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.owner-card:hover{ transform: translateY(-4px); box-shadow: 0 14px 32px rgba(18,60,77,.12); }
+
+/* ===== แท็บเลือกชีท: เด้งขึ้นเวลาเอาเมาส์ชี้ ===== */
+.sheet-tab{
+  transition: transform .2s ease, box-shadow .2s ease,
+              background .12s ease, border-color .12s ease, color .12s ease;
+}
+.sheet-tab:hover:not(.disabled):not(.active){
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(18,60,77,.12);
+}
+.sheet-tab:active:not(.disabled):not(.active){
+  transform: translateY(0);
+  box-shadow: none;
+}
